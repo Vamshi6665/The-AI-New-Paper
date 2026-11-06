@@ -1,0 +1,116 @@
+// The Daily Edition — Prisma schema (spec §9)
+// Events are the system of record; editions store snapshots for reproducibility.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  displayName       String?
+  timezone          String            @default("America/Chicago")
+  preferredPaperSize String           @default("letter")
+  preferredTheme    String            @default("classic")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  events            Event[]
+  editions          NewspaperEdition[]
+}
+
+model Event {
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  category      String
+  dateLocal     String             // yyyy-mm-dd in user tz — the indexed query key
+  startTime     String?            // "HH:mm"
+  endTime       String?
+  timePrecision String             @default("none") // exact | partofday | none
+  partOfDay     String?
+  allDay        Boolean            @default(false)
+  priority      String             @default("normal")
+  status        String             @default("active")
+  location      String?
+  person        String?
+  reminderAt    String?
+  linkedTo      String?
+  sourceType    String             @default("nl")
+  sourceText    String?
+  metadata      Json?
+  checklist     EventChecklistItem[]
+  recurrence    RecurrenceRule?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  deletedAt     DateTime?
+
+  @@index([userId, dateLocal, status])
+}
+
+model EventChecklistItem {
+  id        String  @id @default(cuid())
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean @default(false)
+  sortOrder Int     @default(0)
+}
+
+model RecurrenceRule {
+  id        String  @id @default(cuid())
+  eventId   String  @unique
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  frequency String  // daily | weekly | monthly
+  interval  Int     @default(1)
+  weekdays  String? // CSV of 0-6
+  untilDate String?
+  exclusions String? // CSV of yyyy-mm-dd
+}
+
+model NewspaperEdition {
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  editionDate     String
+  title           String
+  theme           String             @default("classic")
+  paperSize       String             @default("letter")
+  generatedAt     DateTime           @default(now())
+  snapshotVersion Int                @default(1)
+  contentSnapshot Json               // the full composed Edition document model
+  contentHash     String
+  pdfStorageKey   String?
+  status          String             @default("ready")
+  sections        NewspaperSection[]
+  audits          GenerationAudit[]
+
+  @@index([userId, editionDate])
+}
+
+model NewspaperSection {
+  id          String           @id @default(cuid())
+  editionId   String
+  edition     NewspaperEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  sectionType String
+  title       String
+  content     Json
+  sortOrder   Int              @default(0)
+}
+
+model GenerationAudit {
+  id            String           @id @default(cuid())
+  editionId     String
+  edition       NewspaperEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  model         String
+  schemaVersion String
+  status        String
+  errorCode     String?
+  createdAt     DateTime         @default(now())
+}
