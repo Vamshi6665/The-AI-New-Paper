@@ -3,6 +3,8 @@ import type { NextRequest } from 'next/server';
 import { extractEvents } from '@/features/ai/extract';
 import { enrichEdition } from '@/features/ai/enrich';
 import { composeEdition } from '@/features/editions/compose';
+import { aiBriefs } from '@/features/ai/briefs';
+import { parseCalorieTarget } from '@/features/editions/plan';
 import { EventSchema, type EventRecord } from '@/types/event';
 import { formatDateDisplay, todayInTz, addDays } from '@/lib/datetime/resolve';
 import { handlePost, ok } from '@/server/http';
@@ -66,7 +68,10 @@ export async function POST(req: NextRequest) {
         );
 
       const dateDisplay = formatDateDisplay(editionDate);
-      const enrich = await enrichEdition(events, dateDisplay);
+      const [enrich, briefOverrides] = await Promise.all([
+        enrichEdition(events, dateDisplay),
+        aiBriefs(events, dateDisplay, message),
+      ]);
 
       const edition = composeEdition({
         events,
@@ -75,6 +80,8 @@ export async function POST(req: NextRequest) {
         quote: enrich.quote,
         leadHeadline: enrich.leadHeadline,
         leadBody: enrich.leadBody,
+        calorieTarget: parseCalorieTarget(message),
+        briefOverrides,
       });
 
       return ok({ reply: enrich.reply, edition, warnings: extraction.warnings, eventCount: events.length });

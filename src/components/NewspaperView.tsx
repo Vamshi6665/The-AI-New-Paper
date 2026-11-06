@@ -1,138 +1,63 @@
-import type { Edition, NewspaperSection } from '@/types/edition';
+'use client';
+
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { Edition } from '@/types/edition';
+import { paperHtml } from '@/features/paper/paper';
+import { PAPER_CSS } from '@/features/paper/paper-css';
+import { fitPaper } from '@/features/paper/fit';
+import { PAPER_PX, type PaperSize } from '@/features/paper/sizes';
 
 /**
- * On-screen newspaper, rendering the canonical Edition document model — the same
- * one the PDF renderer uses. Styled by `.np-*` classes in globals.css.
+ * The on-screen paper. It renders the SAME markup the PDF uses (paperHtml) and
+ * fits it to exactly one page, then scales the sheet to the available width.
  */
-export function NewspaperView({ edition }: { edition: Edition }) {
+export function NewspaperView({
+  edition,
+  size = 'letter',
+  scale = true,
+}: {
+  edition: Edition;
+  size?: PaperSize;
+  scale?: boolean;
+}) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
+  const [k, setK] = useState(1);
+  const px = PAPER_PX[size];
+
+  // fit type to the page whenever content/size changes, and again once fonts land
+  useLayoutEffect(() => {
+    const p = sheet.current?.querySelector('.paper') as HTMLElement | null;
+    if (p) fitPaper(p);
+  }, [edition, size]);
+  useEffect(() => {
+    const p = () => sheet.current?.querySelector('.paper') as HTMLElement | null;
+    document.fonts?.ready.then(() => {
+      const el = p();
+      if (el) fitPaper(el);
+    });
+  }, [edition, size]);
+
+  // scale the fixed-size sheet to its container (screen only)
+  useEffect(() => {
+    if (!scale) return;
+    const el = wrap.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setK(Math.min(1, el.clientWidth / px.w)));
+    ro.observe(el);
+    setK(Math.min(1, el.clientWidth / px.w));
+    return () => ro.disconnect();
+  }, [px.w, scale]);
+
   return (
-    <div className="np" id="editionPaper">
-      <div className="np-mast">
-        <div className="np-flags">
-          <span>Personal Edition</span>
-          <span>Vol. {String(edition.editionNo).padStart(3, '0')}</span>
-        </div>
-        <h1>{edition.masthead}</h1>
-        <div className="np-tag">{edition.tagline}</div>
-        <div className="np-sub">
-          <span>{edition.dateDisplay}</span>
-          <span>{edition.sourceEventIds.length} events</span>
-        </div>
-      </div>
-
-      {edition.quote && (
-        <div className="np-quote">
-          <span className="ql">“</span>
-          {edition.quote.text}
-          <span className="qa">— {edition.quote.author}</span>
-        </div>
-      )}
-
-      <div className="np-lead">
-        <div className="np-leadcat">Your Say</div>
-        <h2>{edition.leadHeadline}</h2>
-        {edition.leadBody && <p className="np-leadbody">{edition.leadBody}</p>}
-      </div>
-
-      <div className="np-cols">
-        {edition.sections.map((s, i) => (
-          <SectionBlock key={i} section={s} />
-        ))}
-        {edition.missingEventIds.length > 0 && (
-          <section className="np-sec np-missing">
-            <h3>Also on your schedule</h3>
-            <p>These events could not be placed in a section and are listed so nothing is lost:</p>
-            <ul>
-              {edition.missingEventIds.map((id) => (
-                <li key={id}>Event {id}</li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </div>
-
-      <div className="np-foot">
-        {edition.masthead} · {edition.dateDisplay}
-      </div>
+    <div ref={wrap} className="paper-wrap" style={scale ? { height: px.h * k } : undefined}>
+      <style dangerouslySetInnerHTML={{ __html: PAPER_CSS }} />
+      <div
+        ref={sheet}
+        className="paper-scale"
+        style={scale ? { width: px.w, transform: `scale(${k})`, transformOrigin: 'top left' } : undefined}
+        dangerouslySetInnerHTML={{ __html: paperHtml(edition, size) }}
+      />
     </div>
-  );
-}
-
-function SectionBlock({ section: s }: { section: NewspaperSection }) {
-  if (s.type === 'agenda') {
-    const anytime = s.items?.[0];
-    return (
-      <section className="np-sec">
-        <h3>{s.title}</h3>
-        <table className="np-agenda">
-          <tbody>
-            {(s.rows ?? []).map((r, i) => (
-              <tr key={i}>
-                <td className="t">{r.time}</td>
-                <td className="e">
-                  <b>{r.title}</b>
-                  <span>{r.details}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {anytime && anytime.lines.length > 0 && (
-          <div className="np-anytime">
-            <div className="ah">{anytime.heading ?? 'Anytime Today'}</div>
-            {anytime.lines.map((l, i) => (
-              <div className="al" key={i}>
-                • {l}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    );
-  }
-
-  if (s.type === 'glance') {
-    return (
-      <section className="np-sec np-glance">
-        <h3>{s.title}</h3>
-        <ul>
-          {(s.items?.[0]?.lines ?? []).map((l, i) => (
-            <li key={i}>{l}</li>
-          ))}
-        </ul>
-      </section>
-    );
-  }
-
-  if (s.type === 'editorsNote') {
-    return (
-      <section className="np-sec np-note">
-        <h3>{s.title}</h3>
-        <p>{s.items?.[0]?.lines[0]}</p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="np-sec">
-      <h3>{s.title}</h3>
-      {(s.items ?? []).map((it, i) => (
-        <div className="np-item" key={i}>
-          {it.heading && <h4>{it.heading}</h4>}
-          {it.lines.map((l, j) => (
-            <p key={j}>{l}</p>
-          ))}
-          {it.checklist && it.checklist.length > 0 && (
-            <ul className="np-check">
-              {it.checklist.map((c, k) => (
-                <li key={k}>
-                  {c.completed ? '☑' : '☐'} {c.title}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ))}
-    </section>
   );
 }

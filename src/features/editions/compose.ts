@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { EventRecord } from '@/types/event';
-import type { AgendaRow, Edition, Glance, NewspaperSection, SectionItem } from '@/types/edition';
+import type { AgendaRow, Edition, EditionItem, EventBrief, Glance, NewspaperSection, SectionItem } from '@/types/edition';
+import { buildBrief, buildDayPlan, groupFor } from './plan';
 import { CATEGORY_LABEL } from '@/types/event';
 import { formatClock, formatDateDisplay } from '@/lib/datetime/resolve';
 
@@ -83,6 +84,9 @@ export function composeEdition(input: {
   quote?: { text: string; author: string } | null;
   leadHeadline?: string;
   leadBody?: string;
+  calorieTarget?: number | null;
+  /** optional richer briefs (e.g. AI-written) keyed by event id; merged over the deterministic ones */
+  briefOverrides?: Record<string, Partial<EventBrief>>;
 }): Edition {
   const events = input.events.filter((e) => e.status !== 'cancelled');
   const sourceEventIds = events.map((e) => e.id);
@@ -216,6 +220,47 @@ export function composeEdition(input: {
   const representedEventIds = [...represented];
   const missingEventIds = sourceEventIds.filter((id) => !represented.has(id));
 
+  // ---- fully detailed items (what the one-page paper renders) ----
+  const celebrant = events.find((e) => e.category === 'birthday')?.person ?? null;
+  const hasCelebration = events.some((e) => e.category === 'birthday');
+  const items: EditionItem[] = events.map((e) => {
+    const group = groupFor(e, hasCelebration);
+    const base = buildBrief(e, group, { celebrating: celebrant });
+    const o = input.briefOverrides?.[e.id];
+    const brief: EventBrief = o
+      ? {
+          blurb: o.blurb || base.blurb,
+          steps: o.steps?.length ? o.steps : base.steps,
+          checklist: o.checklist?.length ? o.checklist : base.checklist,
+          metrics: base.metrics.length ? base.metrics : (o.metrics ?? []),
+        }
+      : base;
+    return {
+      eventId: e.id,
+      title: e.title,
+      category: e.category,
+      group,
+      timeLabel: timeLabel(e),
+      startTime: e.startTime,
+      endTime: e.endTime,
+      exact: e.timePrecision === 'exact' && !!e.startTime,
+      location: e.location,
+      person: e.person,
+      priority: e.priority,
+      reminder: e.reminderAt ? formatClock(e.reminderAt) : null,
+      brief,
+    };
+  });
+  const POD = ['morning', 'afternoon', 'evening', 'night'];
+  const podOf = new Map(events.map((e) => [e.id, e.partOfDay]));
+  const rank = (i: EditionItem) => (i.exact ? 0 : i.timeLabel === 'Anytime' ? 2 : 1);
+  items.sort((a, b) => {
+    if (rank(a) !== rank(b)) return rank(a) - rank(b);
+    if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+    return POD.indexOf(podOf.get(a.eventId) ?? '') - POD.indexOf(podOf.get(b.eventId) ?? '');
+  });
+  const plan = buildDayPlan(events, { calorieTarget: input.calorieTarget });
+
   const dateDisplay = formatDateDisplay(input.editionDate);
   const edition: Edition = {
     id:
@@ -234,6 +279,8 @@ export function composeEdition(input: {
     leadHeadline: input.leadHeadline ?? leadHeadline(events, glance),
     leadBody: input.leadBody ?? frontStory(events, glance),
     sections,
+    items,
+    plan,
     sourceEventIds,
     representedEventIds,
     missingEventIds,

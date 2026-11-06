@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { EventRecord } from './event';
+import type { EventCategory, EventRecord } from './event';
 
 /**
  * The newspaper document model (spec §6, §11). Composed FROM events; every
@@ -41,6 +41,49 @@ export interface NewspaperSection {
   eventIds: string[]; // every source event covered by this section
 }
 
+/** Extensive per-event detail so the paper is a plan, not just a list. */
+export interface EventBrief {
+  blurb: string; // one-line "what / why"
+  steps: string[]; // ordered plan lines; "Name — detail" renders as two columns
+  checklist: string[]; // tick-off items (bring / buy / prepare)
+  metrics: { label: string; value: string }[]; // short chips: Duration, Leave by, Burn…
+}
+
+export type ItemGroup = 'fitness' | 'celebration' | 'appointment' | 'work' | 'task';
+
+/** One normalized, fully-detailed entry per source event — what the paper renders. */
+export interface EditionItem {
+  eventId: string;
+  title: string;
+  category: EventCategory;
+  group: ItemGroup;
+  timeLabel: string; // "7:00 AM" | "Morning" | "Anytime"
+  startTime: string | null;
+  endTime: string | null;
+  exact: boolean;
+  location: string | null;
+  person: string | null;
+  priority: 'low' | 'normal' | 'high';
+  reminder: string | null; // formatted clock
+  brief: EventBrief;
+}
+
+/** Day-level plan: rhythm, fuel and hydration. */
+export interface DayPlan {
+  wake: string; // "6:00 AM"
+  firstMove: string | null;
+  lastItem: string | null;
+  lightsOut: string;
+  calories: {
+    target: number;
+    source: 'you' | 'suggested';
+    protein: number;
+    meals: { name: string; kcal: number; idea: string }[];
+  } | null;
+  waterLiters: number;
+  waterGlasses: number; // 250 ml each
+}
+
 export interface Edition {
   id: string;
   userId: string;
@@ -53,6 +96,8 @@ export interface Edition {
   leadHeadline: string;
   leadBody: string;
   sections: NewspaperSection[];
+  items: EditionItem[];
+  plan: DayPlan;
   sourceEventIds: string[]; // all eligible events for the date
   representedEventIds: string[]; // all events actually placed in sections
   missingEventIds: string[]; // sourceEventIds not represented (must be empty to pass)

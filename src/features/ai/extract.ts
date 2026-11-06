@@ -9,6 +9,7 @@ import {
   type ResolveContext,
 } from '@/lib/datetime/resolve';
 import { ruleExtract } from './rule-extract';
+import { normalizeSpeech } from '@/lib/speech';
 
 const SYSTEM =
   'You are the event-understanding engine of "The Daily Edition", a personal planner. ' +
@@ -77,7 +78,8 @@ function sanitize(ev: ExtractedEvent, ctx: ResolveContext, rawText: string): Ext
  * configured; otherwise a deterministic rule-based extractor so the product
  * works with zero config. Output is always Zod-validated and sanitized.
  */
-export async function extractEvents(text: string, timezone: string): Promise<ExtractionResult> {
+export async function extractEvents(rawText: string, timezone: string): Promise<ExtractionResult> {
+  const text = normalizeSpeech(rawText); // voice transcripts: "7 a.m.", "seven thirty"
   const ctx: ResolveContext = { timezone, todayLocal: todayInTz(timezone) };
 
   let result: ExtractionResult;

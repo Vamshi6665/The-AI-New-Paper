@@ -16,6 +16,14 @@ The Daily Edition is a **chatbot** that turns your day into a printable newspape
 
 Every day is different because you just talk to it — it's not a form or a checklist maker. Events are the **system of record**; the newspaper is a rendering of them, with a verified **zero-missing-event guarantee** so nothing is ever silently dropped.
 
+## What's new
+
+- **Voice input** — tap the mic and talk. Spoken forms ("seven a.m.", "half past six") are normalised before extraction. Works in Chrome, Edge and Safari (Web Speech API); typing always works.
+- **One-page paper** — a single magazine-style sheet that auto-fits (type scales up on a light day, tightens on a packed one). The *same markup* drives the screen preview, the browser print dialog and the server PDF, so what you read is what prints.
+- **Detailed plans, not just a list** — each item gets a brief: workout with sets/reps and estimated burn, calorie and hydration plan (or your own target, e.g. "2200 calorie"), leave-by and check-in times for appointments, bring-lists, birthday prep, grocery checklist, wake time and lights-out, a 24-hour day bar, "three wins" and notes space.
+- **Nano theme** — graphite and silver, hairline borders, one cool-steel accent.
+- **Print fixed** — the old print stylesheet could hide the whole paper (blank PDF). Printing now goes through a dedicated page-size sheet with forced print colours, and is covered by tests.
+
 ## How it reads (matches a real morning paper)
 
 1. **Masthead** — a title invented for the day (e.g. "The Morning Dispatch").

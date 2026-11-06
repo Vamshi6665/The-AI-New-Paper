@@ -42,6 +42,15 @@ const RULES: Rule[] = [
   { category: 'reminder', keywords: /\bremind|remember to|don't forget/i },
 ];
 
+const CLAUSE_VERBS =
+  'finish|call|attend|go|do|email|send|meet|visit|pay|study|read|drive|submit|work|clean|cook|write|plan|prepare|book|schedule|take|pick|buy|get|have|wash|run|text|message|remind|practice|review|join|start|water|walk|stretch|meditate|call|see|check|organi[sz]e|fix|order|return|renew|file|print|pack';
+
+// Built from plain strings on purpose: a template literal here gets mangled by the production minifier.
+const LIST_RE = new RegExp(
+  '\\b(buy|need|get|grab)\\b(.*?)(?=(?:,|\\band)\\s+(?:' + CLAUSE_VERBS + ')\\b|\\bthen\\b|;|\\.|$)',
+  'gi'
+);
+
 function categorize(clause: string): EventCategory {
   for (const r of RULES) if (r.keywords.test(clause)) return r.category;
   return 'task';
@@ -52,13 +61,10 @@ function categorize(clause: string): EventCategory {
  *  are list separators, not clause boundaries) by joining the items with the
  *  placeholder ⁞, which extractChecklist later splits back out. */
 function splitClauses(text: string): string[] {
-  let t = text.replace(/\btomorrow\b/gi, ' ');
+  let t = text.replace(/\b(tomorrow|today)\b\s*[:,\-–—]?/gi, ' ');
   // Protect a grocery/errand list from the comma+and split, but ONLY up to the
   // next clause verb (so "buy groceries and finish X" still splits in two).
-  t = t.replace(
-    /\b(buy|need|get|pick up|grab)\b(.*?)(?=\b(?:and\s+(?:finish|call|attend|go|do|email|send|meet|visit|pay|study|read|drive|submit)|then|;|\.|$))/gi,
-    (_m, verb: string, rest: string) => `${verb}${rest.replace(/,|\s+and\s+/gi, '⁞')}`
-  );
+  t = t.replace(LIST_RE, (_m, verb: string, rest: string) => `${verb}${rest.replace(/,|\s+and\s+/gi, '⁞')}`);
   return t
     .split(/,| and | then |;|\.|\balso\b/i)
     .map((c) => c.trim().replace(/⁞/g, ', '))
@@ -77,6 +83,9 @@ function extractTime(clause: string): { start: string | null; raw: string | null
     if (h >= 5 && h <= 11) h24 = h;
     else if (h === 12) h24 = 12;
     else if (h >= 1 && h <= 4) h24 = h + 12;
+    // context beats the generic guess: dinner/call/movie at 8 is evening, gym/run at 6 is morning
+    if (/\b(dinner|supper|movie|party|date night|drinks|call|text)\b/i.test(clause) && h >= 1 && h <= 9) h24 = h + 12;
+    else if (/\b(gym|workout|run|jog|yoga|walk|wake|breakfast|commute)\b/i.test(clause) && h >= 4 && h <= 11) h24 = h;
     const partOfDay = detectPartOfDay(clause);
     if (partOfDay === 'evening' || partOfDay === 'night') h24 = h < 12 ? h + 12 : h;
     return { start: `${String(h24).padStart(2, '0')}:00`, raw: bare[1]!, assumed: true };
@@ -98,11 +107,15 @@ function titleize(clause: string): string {
     .replace(/\b(at|by|around|from)\s+\d.*$/i, '')
     .replace(/\bfor \d+\s*[-\s]?(?:min|hour|hr).*$/i, '')
     .replace(/\bi (need to|want to|have to|should|must|will|'d like to|would like to)\b/gi, '')
-    .replace(/\bi have (a|an|the)?\b/gi, '')
+    .replace(/\bi (?:just |only |also )?(?:have|got|'ve got)\s+(?:a |an |the )?/gi, '')
+    .replace(/\bi've got (?:a |an |the )?/gi, '')
     .replace(/\bremind me to\b/gi, '')
     .replace(/\bit is\b|\bit's\b/gi, '')
     .replace(/\b\d{1,3}\s*[-\s]?min(?:ute)?s?\b/gi, '')
     .replace(/\b(\d{1,2}(:\d{2})?\s*(am|pm)?)\b/gi, '')
+    .replace(/^[\s:,;\-–—]+/, '')
+    .replace(/^\s*(then|also|after that|first|next|finally|and|so|i've got|i got|i have got)\s+/i, '')
+    .replace(/\b(its|it's)\s+/gi, '')
     .replace(/^\s*(do a|do an|do|go to the|go to|go|have a|have|a|an)\s+/i, '')
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,-]+|[\s,-]+$/g, '')
@@ -111,7 +124,16 @@ function titleize(clause: string): string {
   return t.length > 2 ? t.slice(0, 80) : clause.slice(0, 80);
 }
 
+/** Words after the time ("gym at 7 leg day") — keeps useful detail the title drops. */
+function tailAfterTime(clause: string): string | null {
+  const m = clause.match(/\b(?:at|by|around|from)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b(.*)$/i);
+  const tail = m?.[1]?.replace(/^[\s,;:\-–—]+|[\s,;:\-–—]+$/g, '').trim();
+  return tail && tail.length >= 3 ? tail.slice(0, 120) : null;
+}
+
 function extractPerson(clause: string): string | null {
+  const bd = clause.match(/\b([A-Z][a-z]+)'s\s+(?:birthday|anniversary)|\b(?:birthday|anniversary)\s+(?:of|for)\s+([A-Z][a-z]+)/);
+  if (bd) return (bd[1] ?? bd[2])!;
   const m = clause.match(/\b(?:call|text|message|visit|meet)\s+([A-Z][a-z]+)/);
   if (m) return m[1]!;
   const poss = clause.match(/\b([A-Z][a-z]+)'s\b/);
@@ -121,7 +143,7 @@ function extractPerson(clause: string): string | null {
 function extractChecklist(clause: string, category: EventCategory): string[] {
   if (category !== 'errand' && category !== 'task') return [];
   // "milk, eggs, bread and bananas" after a buy/need verb
-  const m = clause.match(/\b(?:buy|need|get|pick up)\s+(.+)/i);
+  const m = clause.match(/\b(?:need to buy|need to get|have to buy|buy|need|get|pick up)\s+(.+)/i);
   if (!m) return [];
   return m[1]!
     .split(/,| and /i)
@@ -176,7 +198,7 @@ export function ruleExtract(text: string, ctx: ResolveContext): ExtractionResult
       priority: /\b(urgent|important|asap|must|deadline|last day)\b/i.test(clause) ? 'high' : 'normal',
       location: null,
       person,
-      description: null,
+      description: tailAfterTime(clause),
       checklist,
       reminderAt,
       confidence: 0.6,
@@ -187,6 +209,29 @@ export function ruleExtract(text: string, ctx: ResolveContext): ExtractionResult
         : null,
     };
   });
+
+  // "Sarah's birthday ... call her at 8 PM": fold the follow-up call into the birthday
+  const bi = events.findIndex((e) => e.category === 'birthday');
+  if (bi >= 0) {
+    const b = events[bi]!;
+    const ci = events.findIndex(
+      (e, i) =>
+        i > bi &&
+        /^(call|text|message|wish|phone|ring)\b/i.test(e.title) &&
+        (/\b(her|him|them)\b/i.test(e.title) || (b.person ? new RegExp('\\b' + b.person + '\\b', 'i').test(e.title) : false))
+    );
+    if (ci >= 0) {
+      const c = events[ci]!;
+      if (c.startTime && !b.reminderAt) b.reminderAt = c.startTime;
+      if (c.startTime && b.timePrecision === 'none') {
+        b.startTime = c.startTime;
+        b.timePrecision = 'exact';
+        b.missing = [...b.missing, ...c.missing];
+      }
+      events.splice(ci, 1);
+    }
+    if (b.person) b.title = `${b.person}'s birthday`;
+  }
 
   if (events.length === 0) warnings.push('No distinct activities detected. Try naming what you plan to do.');
   return { events, warnings };

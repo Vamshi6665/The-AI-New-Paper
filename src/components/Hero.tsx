@@ -11,7 +11,7 @@ export function Hero({ onStart }: { onStart: () => void }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const lines = ['YOUR DAY,', 'ENGINEERED', 'INTO A PAPER.'];
+  const lines = ['Your day,', 'set in type,', 'on one page.'];
 
   return (
     <section className="hero">
@@ -19,7 +19,7 @@ export function Hero({ onStart }: { onStart: () => void }) {
       <div className="hero-inner">
         <div className="hero-eyebrow" style={rise(mounted, 0)}>
           <span className="pulse" />
-          The Daily Edition · built in seconds
+          The Daily Edition · speak it or type it
         </div>
 
         <h1 className="hero-h1">
@@ -33,8 +33,8 @@ export function Hero({ onStart }: { onStart: () => void }) {
         </h1>
 
         <p className="hero-sub" style={rise(mounted, 440)}>
-          Tell it your day in plain words. A performance engine reads it, sets the headlines, and hands you a
-          personal newspaper — ready to read with coffee and print.
+          Say your day out loud or type it in plain words. It plans each item in detail — workouts, meals, prep lists, leave-by times —
+          and sets it as a personal newspaper that prints on a single page.
         </p>
 
         <div className="hero-cta" style={rise(mounted, 540)}>

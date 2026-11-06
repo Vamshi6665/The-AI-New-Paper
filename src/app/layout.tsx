@@ -3,12 +3,12 @@ import { publicEnv } from '@/lib/env';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'The Daily Edition — your day, engineered into a paper',
+  title: 'The Daily Edition — your day, set in type on one page',
   description:
-    'Tell it your day in plain words. A high-performance engine builds your personal edition in seconds — read it, print it, own the morning.',
+    'Tell it your day in plain words. Speak or type your day and get a detailed, printable one-page personal newspaper — read it, print it, own the morning.',
   openGraph: {
     title: 'The Daily Edition',
-    description: 'Your day, engineered into a paper.',
+    description: 'Your day, set in type on one page.',
     type: 'website',
   },
 };
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz@0,6..72;1,6..72&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,700;1,6..72,400;1,6..72,500&family=Inter:wght@400;500;600;700&family=Oswald:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
