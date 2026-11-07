@@ -20,13 +20,13 @@ describe('suggested times and plans', () => {
     expect(by('Grocery').suggested).toBe(true);
     expect(by('Grocery').timeLabel).toBe('4:30 PM');
     expect(by('sister').timeLabel).toBe('6:00 PM');
-    expect(by('movie').startTime).toBe('21:00'); // watched at the sister's, inside the visit
+    expect(by('movie').startTime).toBe('20:30'); // movie night, inside the evening at the sister's
     expect(by('chest').suggested).toBe(false);
   });
 
   it('plans the chest day in detail', () => {
     const steps = by('chest').brief.steps.join(' | ');
-    expect(steps).toMatch(/Flat bench press — 4 × 8/);
+    expect(steps).toMatch(/Cycle 1 · 16 min — Strength: Flat bench press 4 × 8/);
     expect(by('chest').brief.metrics.map((m) => m.label)).toEqual(expect.arrayContaining(['Focus', 'Rest', 'Total sets']));
   });
 
@@ -42,5 +42,16 @@ describe('suggested times and plans', () => {
     expect(Math.abs(c.meals.reduce((a, m) => a + m.kcal, 0) - 3000)).toBeLessThanOrEqual(30);
     expect(c.meals.map((m) => m.name)).toContain('Pre-workout');
     expect(c.meals.every((m) => /^\d{1,2}:\d{2} (AM|PM)$/.test(m.time))).toBe(true);
+  });
+});
+
+describe('movie night with no time given', () => {
+  it('blocks 6–9 PM', () => {
+    const e = composeEdition({
+      events: [ev({ title: 'Watch a movie', category: 'leisure' })],
+      editionDate: '2026-11-07',
+    });
+    expect(e.items[0]!.timeLabel).toBe('6:00 PM');
+    expect(e.items[0]!.endLabel).toBe('9:00 PM');
   });
 });

@@ -37,7 +37,7 @@ export function defaultDuration(e: EventRecord): number {
     case 'social':
       return /\b(visit|place|house|home|sister|brother|parents|family)\b/i.test(t) ? 180 : 90;
     case 'leisure':
-      return /\bmovie|film\b/i.test(t) ? 120 : 60;
+      return /\bmovie|film\b/i.test(t) ? 180 : 60; // movie night block: snacks + film + wind-down
     case 'meeting':
     case 'medical':
     case 'appointment':
@@ -63,8 +63,8 @@ function preferred(e: EventRecord): { part: PartOfDay; at: number } {
   if (e.partOfDay) {
     const [a] = WINDOW[e.partOfDay];
     // leisure at night: movie night starts around 9; evening social around 6:30
-    if (e.category === 'leisure' && e.partOfDay === 'night') return { part: 'night', at: 21 * 60 };
-    if (e.category === 'leisure' && e.partOfDay === 'evening') return { part: 'evening', at: 19 * 60 + 30 };
+    if (e.category === 'leisure' && e.partOfDay === 'night') return { part: 'night', at: 20 * 60 };
+    if (e.category === 'leisure' && e.partOfDay === 'evening') return { part: 'evening', at: 18 * 60 }; // 6 to 9
     if (e.category === 'social' && e.partOfDay === 'evening') return { part: 'evening', at: 18 * 60 };
     if (e.category === 'errand' && e.partOfDay === 'evening') return { part: 'evening', at: 18 * 60 };
     return { part: e.partOfDay, at: a };
@@ -78,7 +78,7 @@ function preferred(e: EventRecord): { part: PartOfDay; at: number } {
     case 'study':
       return { part: 'morning', at: 9 * 60 + 30 };
     case 'leisure':
-      return { part: 'night', at: 20 * 60 + 30 };
+      return { part: 'evening', at: 18 * 60 };
     case 'social':
       return { part: 'evening', at: 18 * 60 };
     case 'meal':
@@ -128,6 +128,9 @@ export function suggestPlacements(events: EventRecord[]): Placement[] {
   for (const e of todo) {
     const dur = defaultDuration(e);
     const pref = preferred(e);
+    // movie alongside a visit: start after the hello and dinner, not on arrival
+    const host = e.category === 'leisure' ? busy.find((b) => b.host) : undefined;
+    if (host && pref.part !== 'night') pref.at = Math.max(pref.at, host.start + 90);
     const [wa, wz] = WINDOW[pref.part];
     const movie = e.category === 'leisure';
     const free = (s: number) =>

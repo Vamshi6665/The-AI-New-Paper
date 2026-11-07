@@ -28,7 +28,7 @@ const RULES: Rule[] = [
     category: 'medical',
     keywords: /\bdoctor|dentist|clinic|hospital|appointment with dr|medical|checkup|physical/i,
   },
-  { category: 'meeting', keywords: /\bmeeting|standup|review|sync|call with|presentation|interview|demo/i },
+  { category: 'meeting', keywords: /\bmeeting(?!\s+(?:my|his|her|our)\s+(?:sister|brother|cousin|aunt|uncle|mom|mother|dad|father|parents|family|friends?)\b)|standup|review|sync|call with|presentation|interview|demo/i },
   { category: 'deadline', keywords: /\bdeadline|due|last day|submit by|pay .* bill|finish .* before/i },
   { category: 'finance', keywords: /\bbill|invoice|rent|payment|pay the|transfer money/i },
   {
@@ -119,6 +119,10 @@ function titleize(clause: string): string {
     .replace(/\bi've got (?:a |an |the )?/gi, '')
     .replace(/\bremind me to\b/gi, '')
     .replace(/\bit is\b|\bit's\b/gi, '')
+    .replace(/\b(?:today|tomorrow|tonight)\s+(?:is|i have|i've got)\b/gi, '')
+    .replace(/\bi'?m\s+(?:going to\s+)?/gi, '')
+    .replace(/^\s*is\s+/i, '')
+    .replace(/^\s*meeting\s+(?=(?:my|his|her)\s)/i, '')
     .replace(/\b\d{1,3}\s*[-\s]?min(?:ute)?s?\b/gi, '')
     .replace(/\b(\d{1,2}(:\d{2})?\s*(am|pm)?)\b/gi, '')
     .replace(/^[\s:,;\-–—]+/, '')

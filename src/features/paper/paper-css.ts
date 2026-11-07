@@ -1,6 +1,6 @@
 /**
- * The paper's stylesheet — graphite & silver. One monochrome family with a
- * single cool-steel accent, so it prints beautifully on any printer. Every
+ * The paper's stylesheet — warm newsprint & ink with a deep-green accent. A
+ * restrained, classic broadsheet palette that prints beautifully. Every
  * length is in `em`; `fitPaper` scales `--s` so the page always fills exactly.
  */
 export const FONT_LINK =
@@ -8,10 +8,10 @@ export const FONT_LINK =
 
 export const PAPER_CSS = `
 .paper{
-  --ink:#1c1e22; --ink2:#3a3d44; --mute:#666b74; --faint:#9b9fa7;
-  --line:#cfd1d5; --tint:#e4e5e8; --card:#f9f9fa; --sheet:#ebecee;
-  --dark:#3a3d43; --dark2:#4a4e55; --steel:#d8142f; --silver:#d6d8dc;
-  --red:#d8142f; --red2:#ff8d9b;
+  --ink:#1c1a16; --ink2:#3a3730; --mute:#6b6558; --faint:#9c9585;
+  --line:#d4cbb6; --tint:#ebe3cf; --card:#fbf8ef; --sheet:#f4eedd;
+  --dark:#26231e; --dark2:#38342c; --steel:#1f5c4a; --silver:#d9d0ba;
+  --red:#1f5c4a; --red2:#9ad4bd;
   -webkit-print-color-adjust:exact; print-color-adjust:exact;
   position:relative; box-sizing:border-box; overflow:hidden;
   width:var(--pw); height:var(--ph);
@@ -48,17 +48,17 @@ export const PAPER_CSS = `
 .p-quote{background:var(--red);color:#fff;border-radius:.8em;padding:.9em 1em;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .p-quote::before{content:"\\201C";position:absolute;right:.15em;top:-.28em;font:700 7em/1 'Newsreader',serif;color:#ffffff33}
 .p-quote q{quotes:none;font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:1.28em;line-height:1.28;position:relative}
-.p-quote cite{font-style:normal;margin-top:.7em;color:#ffe1e5;display:block}
+.p-quote cite{font-style:normal;margin-top:.7em;color:#d6efe3;display:block}
 
 /* day bar */
 .p-daybar{margin-top:.75em}
 .p-daybar .track{position:relative;height:.7em;border-radius:99px;background:var(--tint);border:1px solid var(--line)}
 .p-daybar .blk{position:absolute;top:-1px;bottom:-1px;border-radius:99px;background:var(--red)}
-.p-daybar .blk.sug{background:repeating-linear-gradient(135deg,#e5707f 0 3px,#f4bcc4 3px 6px)}
+.p-daybar .blk.sug{background:repeating-linear-gradient(135deg,#4f8a74 0 3px,#bcd9cc 3px 6px)}
 .p-daybar .blk.g-fitness{background:var(--dark)}
 .p-daybar .blk.g-celebration{background:var(--red)}
 .p-daybar .blk.g-appointment{background:var(--ink)}
-.p-daybar .blk.g-task{background:#8a8f98}
+.p-daybar .blk.g-task{background:#948c78}
 .p-daybar .ticks{position:relative;height:1.2em;margin-top:.25em;font-size:.72em;color:var(--mute);letter-spacing:.08em}
 .p-daybar .ticks span{position:absolute;transform:translateX(-50%);font-weight:600}
 .p-daybar .ticks span:first-child{transform:none}
@@ -96,41 +96,42 @@ export const PAPER_CSS = `
 /* cards */
 .card{background:var(--card);border:1px solid var(--line);border-radius:.8em;padding:.7em .85em;margin-bottom:.65em;flex:0 0 auto}
 .card.grow{flex:1 1 auto}
-.card.dark{background:var(--dark);border-color:var(--dark);color:#eceef1}
+.card.dark{background:var(--dark);border-color:var(--dark);color:#efe8d6}
 .card-k{display:flex;justify-content:space-between;align-items:center;color:var(--steel);gap:.5em}
 .card-k .pill{background:var(--red);color:#fff;border-radius:99px;padding:.1em .7em;font-size:1em;letter-spacing:.06em;font-family:'Oswald',sans-serif;font-weight:500;text-transform:none}
 .card.dark .card-k{color:var(--red2)}
 .p-title{font-weight:700;font-size:1.42em;line-height:1.1;margin:.22em 0 .12em}
 .blurb{font-size:.9em;color:var(--mute);line-height:1.35}
-.card.dark .blurb{color:#aab2bd}
+.card.dark .blurb{color:#b0a78f}
 .chips{display:flex;flex-wrap:wrap;gap:.3em;margin:.5em 0 .1em}
 .chip{background:var(--tint);border-radius:.45em;padding:.2em .55em;font-size:.8em;line-height:1.2;color:var(--ink2)}
 .chip b{display:block;font-family:'Oswald',sans-serif;font-weight:500;font-size:1.22em;color:var(--ink)}
 .chip i{font-style:normal;font-size:.8em;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600}
-.card.dark .chip{background:#ffffff14;color:#cfd4db}
+.card.dark .chip{background:#ffffff14;color:#d4cbb6}
 .card.dark .chip b{color:#fff}
-.card.dark .chip i{color:#8d97a4}
+.card.dark .chip i{color:#948c78}
 
 .ex{margin-top:.45em;font-size:.9em}
 .ex div{display:flex;justify-content:space-between;gap:.8em;padding:.2em 0;border-bottom:1px dashed #ffffff26}
 .ex div:last-child{border-bottom:0}
-.ex span:last-child{font-family:'Oswald',sans-serif;letter-spacing:.03em;color:var(--silver);white-space:nowrap}
+.ex span:first-child{flex:none;max-width:44%}
+.ex span:last-child{font-family:'Oswald',sans-serif;letter-spacing:.03em;color:var(--silver);text-align:right}
 .card:not(.dark) .ex div{border-bottom-color:var(--line)}
 .card:not(.dark) .ex span:last-child{color:var(--ink)}
 .steps{margin-top:.45em;font-size:.88em;counter-reset:s}
 .steps li{position:relative;padding:.14em 0 .14em 1.5em;counter-increment:s;color:var(--ink2)}
 .steps li::before{content:counter(s);position:absolute;left:0;top:.2em;width:1.2em;height:1.2em;border-radius:50%;background:var(--red);color:#fff;font-size:.78em;display:grid;place-items:center;font-weight:600}
-.card.dark .steps li{color:#d7dbe1}
+.card.dark .steps li{color:#ddd4bf}
 .card.dark .steps li::before{background:var(--red)}
 
 .ck{margin-top:.45em;font-size:.88em}
 .ck.two{columns:2;column-gap:.8em}
 .ck li{display:flex;gap:.5em;align-items:flex-start;padding:.1em 0;break-inside:avoid;color:var(--ink2)}
 .ck li::before{content:"";flex:none;width:.85em;height:.85em;margin-top:.14em;border:1.5px solid var(--ink);border-radius:.22em}
-.card.dark .ck li{color:#d7dbe1}
-.card.dark .ck li::before{border-color:#aab2bd}
+.card.dark .ck li{color:#ddd4bf}
+.card.dark .ck li::before{border-color:#b0a78f}
 .sub{margin-top:.5em;color:var(--mute)}
-.card.dark .sub{color:#b3b8c0}
+.card.dark .sub{color:#b5ad97}
 
 /* fuel */
 .fuel{display:flex;gap:.8em;align-items:center;margin-top:.5em}

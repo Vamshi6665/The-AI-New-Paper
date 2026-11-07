@@ -171,7 +171,7 @@ export function Chat() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKey}
             rows={1}
-            placeholder="What’s happening today? e.g. gym at 7, meeting at 10, call mom tonight…"
+            placeholder="Say your day: chest at 6, sister at 6 PM, movie…"
             disabled={busy}
             aria-label="Describe your day"
           />

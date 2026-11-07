@@ -97,7 +97,7 @@ function fitnessCard(i: EditionItem, d: number): Card {
   };
 }
 
-const RING = ['#d8142f', '#3a3d43', '#8a8f98', '#c9cbd0', '#e98a96'];
+const RING = ['#1f5c4a', '#26231e', '#948c78', '#cfc5ad', '#7fb09c'];
 
 function fuelCard(e: Edition): Card | null {
   const c = e.plan.calories;
