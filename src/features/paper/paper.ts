@@ -16,6 +16,8 @@ const GROUP_TAG: Record<EditionItem['group'], string> = {
   appointment: 'Appointment',
   work: 'Work',
   task: 'To-do',
+  social: 'Social',
+  leisure: 'Unwind',
 };
 
 interface Card {
@@ -23,7 +25,29 @@ interface Card {
   weight: number; // rough height estimate for column balancing
 }
 
+const labelMin = (label: string): number => {
+  const m = label.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/);
+  if (!m) return 0;
+  let h = Number(m[1]) % 12;
+  if (m[3] === 'PM') h += 12;
+  return h * 60 + Number(m[2]);
+};
+const fmtMin = (m: number): string => {
+  const x = ((Math.round(m) % 1440) + 1440) % 1440;
+  const h = Math.floor(x / 60);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(x % 60).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+function picks(i: EditionItem): string {
+  const s = i.brief.suggestions;
+  if (!s || !s.length) return '';
+  return `<div class="sub cap">${esc(i.brief.suggestionsLabel ?? 'Suggestions')}</div><ul class="picks">${s
+    .map((x) => `<li><b>${esc(x.title)}</b><span>${esc(x.note)}</span></li>`)
+    .join('')}</ul>`;
+}
+
 function pill(i: EditionItem): string {
+  if (i.suggested) return `~${esc(i.timeLabel)}`;
   return i.exact ? esc(i.timeLabel) : i.timeLabel === 'Anytime' ? '' : esc(i.timeLabel);
 }
 
@@ -73,7 +97,7 @@ function fitnessCard(i: EditionItem, d: number): Card {
   };
 }
 
-const RING = ['#1b1e22', '#4a4f57', '#8a9bb0', '#c4c9d1'];
+const RING = ['#d8142f', '#3a3d43', '#8a8f98', '#c9cbd0', '#e98a96'];
 
 function fuelCard(e: Edition): Card | null {
   const c = e.plan.calories;
@@ -87,18 +111,18 @@ function fuelCard(e: Edition): Card | null {
     })
     .join(',');
   return {
-    weight: 11,
+    weight: 8 + c.meals.length * 2.2,
     html: `<section class="card"><div class="card-k cap"><span>Fuel plan</span><span>${c.source === 'you' ? 'Your target' : 'Suggested'}</span></div>
       <div class="fuel">
         <div class="ring" style="background:conic-gradient(${segs})"><div><b>${c.target.toLocaleString('en-US')}</b><small>KCAL</small></div></div>
         <div class="meals">${c.meals
           .map(
             (m, k) =>
-              `<div><i style="background:${RING[k % RING.length]}"></i><span>${esc(m.name)}<em>${esc(m.idea)}</em></span><span class="k">${m.kcal}</span></div>`
+              `<div><i style="background:${RING[k % RING.length]}"></i><span>${esc(m.name)} <u>${esc(m.time)}</u><em>${esc(m.idea)}</em></span><span class="k">${m.kcal}</span></div>`
           )
           .join('')}</div>
       </div>
-      <p class="note">Protein ≈ ${c.protein} g · general guide, adjust to your needs.</p>
+      <p class="note">${esc(c.note)} Protein ≈ ${c.protein} g. General guide, adjust to your needs.</p>
     </section>`,
   };
 }
@@ -116,13 +140,14 @@ function detailCard(kicker: string, i: EditionItem, d: number): Card {
   const steps = d >= 2 ? i.brief.steps.slice(0, 2) : d >= 1 ? i.brief.steps.slice(0, 3) : i.brief.steps;
   const list = d >= 2 ? i.brief.checklist.slice(0, 3) : i.brief.checklist;
   return {
-    weight: 5 + steps.length * 1.1 + list.length * 0.9,
+    weight: 5 + steps.length * 1.1 + list.length * 0.9 + (i.brief.suggestions?.length ?? 0) * 1.6,
     html: `<section class="card">${head(kicker, i)}
       <h3 class="p-title">${esc(i.title)}</h3>
       ${d >= 2 ? '' : `<p class="blurb">${esc(i.brief.blurb)}</p>`}
       ${chips(i)}
       ${numbered(steps)}
-      ${list.length ? `<div class="sub cap">${i.group === 'appointment' ? 'Bring' : 'Prepare'}</div>${checklist(list)}` : ''}
+      ${picks(i)}
+      ${list.length ? `<div class="sub cap">${i.group === 'appointment' ? 'Bring' : i.group === 'social' ? 'Take along' : 'Prepare'}</div>${checklist(list)}` : ''}
     </section>`,
   };
 }
@@ -161,12 +186,45 @@ function todoCard(items: EditionItem[], d: number): Card {
   };
 }
 
+function focusCard(e: Edition): Card | null {
+  const score = (i: EditionItem) =>
+    (i.priority === 'high' ? 0 : 10) + ({ appointment: 1, fitness: 2, work: 3, celebration: 4, social: 5, task: 6, leisure: 8 } as Record<string, number>)[i.group]!;
+  const top = [...e.items].sort((a, b) => score(a) - score(b)).slice(0, 3);
+  if (top.length < 2) return null;
+  top.sort((a, b) => (a.startTime ?? '99').localeCompare(b.startTime ?? '99'));
+  return {
+    weight: 4 + top.length * 2.4,
+    html: `<section class="card"><div class="card-k cap"><span>Focus of the day</span><span>top ${top.length}</span></div>
+      <ol class="top3">${top
+        .map((i) => `<li><span class="n"></span><span><b>${esc(i.title)}</b><em>${esc(i.exact ? i.timeLabel : i.suggested ? `around ${i.timeLabel}` : i.timeLabel)}</em></span></li>`)
+        .join('')}</ol>
+      <p class="note">If everything else slips, these three still make today a good day.</p></section>`,
+  };
+}
+
+function windDownCard(e: Edition): Card {
+  const lights = labelMin(e.plan.lightsOut);
+  const rows: [string, string][] = [
+    [fmtMin(lights - 60), 'Screens off, lights low'],
+    [fmtMin(lights - 45), 'Lay out tomorrow’s clothes and bag'],
+    [fmtMin(lights - 30), 'Write three good things from today'],
+    [fmtMin(lights - 15), '5 min stretch and slow breathing'],
+    [e.plan.lightsOut, 'Phone on charge, away from the bed'],
+  ];
+  return {
+    weight: 4 + rows.length * 1.4,
+    html: `<section class="card dark"><div class="card-k cap"><span>Evening wind-down</span><span class="pill">${esc(e.plan.lightsOut)}</span></div>
+      <div class="ex">${rows.map(([t, l]) => `<div><span>${esc(l)}</span><span>${esc(t)}</span></div>`).join('')}</div>
+      <p class="blurb" style="margin-top:.5em">Seven good hours beat a heroic plan tomorrow.</p></section>`,
+  };
+}
+
 function timeParts(i: EditionItem): string {
-  if (!i.exact) {
+  if (!i.exact && !i.suggested) {
     return i.timeLabel === 'Anytime' ? '<div class="tl-t soft">Any time</div>' : `<div class="tl-t soft">${esc(i.timeLabel)}</div>`;
   }
   const [t, m] = i.timeLabel.split(' ');
-  return `<div class="tl-t">${esc(t)}<small>${esc(m)}</small></div>`;
+  return `<div class="tl-t${i.suggested ? ' sug' : ''}">${i.suggested ? '~' : ''}${esc(t)}<small>${esc(m)}</small></div>`;
 }
 
 function timeline(items: EditionItem[]): string {
@@ -183,7 +241,7 @@ function timeline(items: EditionItem[]): string {
         .join(' · ');
       return `<div class="tl-row${i.priority === 'high' ? ' hi' : ''}">${timeParts(i)}<div class="tl-b"><b>${esc(i.title)}</b>${
         detail ? `<span class="tl-d">${esc(detail)}</span>` : ''
-      }<span class="tag">${GROUP_TAG[i.group]}</span></div></div>`;
+      }<span class="tag">${GROUP_TAG[i.group]}${i.suggested ? ' · suggested slot' : ''}</span></div></div>`;
     })
     .join('');
 }
@@ -192,24 +250,18 @@ const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
 /** A 24-hour-style strip from wake to lights-out: when things happen, at a glance. */
 function dayBar(e: Edition): string {
-  const parse = (label: string): number => {
-    const m = label.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/);
-    if (!m) return 0;
-    let h = Number(m[1]) % 12;
-    if (m[3] === 'PM') h += 12;
-    return h * 60 + Number(m[2]);
-  };
+  const parse = labelMin;
   const a = Math.floor(parse(e.plan.wake) / 60) * 60;
   let z = Math.ceil(parse(e.plan.lightsOut) / 60) * 60;
   if (z <= a) z += 24 * 60;
   const span = z - a;
   const pct = (m: number) => Math.max(0, Math.min(100, ((m - a) / span) * 100));
-  const exact = e.items.filter((i) => i.exact && i.startTime);
+  const exact = e.items.filter((i) => i.startTime);
   const blocks = exact
     .map((i) => {
       const s0 = mins(i.startTime!);
       const dur = i.endTime ? Math.max(15, mins(i.endTime) - s0) : i.group === 'fitness' ? 60 : i.group === 'appointment' ? 45 : 30;
-      return `<i class="blk g-${i.group}" style="left:${pct(s0).toFixed(2)}%;width:${Math.max(1.2, (dur / span) * 100).toFixed(2)}%" title="${esc(i.title)}"></i>`;
+      return `<i class="blk g-${i.group}${i.suggested ? ' sug' : ''}" style="left:${pct(s0).toFixed(2)}%;width:${Math.max(1.2, (dur / span) * 100).toFixed(2)}%" title="${esc(i.title)}"></i>`;
     })
     .join('');
   const ticks: string[] = [];
@@ -263,10 +315,15 @@ export function paperHtml(e: Edition, size: PaperSize = 'letter'): string {
   const cel = by('celebration');
   if (cel.length) cards.push(celebrationCard(cel, d));
   by('appointment').forEach((i) => cards.push(detailCard('Appointment', i, d)));
+  by('social').forEach((i) => cards.push(detailCard('Family & Social', i, d)));
+  by('leisure').forEach((i) => cards.push(detailCard(/movie|film/i.test(i.title) ? 'Movie night' : 'Unwind', i, d)));
   by('work').forEach((i) => cards.push(detailCard(i.category === 'meeting' ? 'Work · Meeting' : 'Deep work', i, d)));
   const tasks = by('task');
   if (tasks.length) cards.push(todoCard(tasks, d));
   cards.push(waterCard(e));
+  const fc = n <= 8 ? focusCard(e) : null;
+  if (fc) cards.push(fc);
+  if (n <= 10) cards.push(windDownCard(e));
 
   // balance three columns by estimated height; column 0 starts with the timeline
   const cols: Card[][] = [[], [], []];

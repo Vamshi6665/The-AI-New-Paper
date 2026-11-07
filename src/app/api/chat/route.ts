@@ -4,6 +4,7 @@ import { extractEvents } from '@/features/ai/extract';
 import { enrichEdition } from '@/features/ai/enrich';
 import { composeEdition } from '@/features/editions/compose';
 import { aiBriefs } from '@/features/ai/briefs';
+import { liveMovies } from '@/server/movies';
 import { parseCalorieTarget } from '@/features/editions/plan';
 import { EventSchema, type EventRecord } from '@/types/event';
 import { formatDateDisplay, todayInTz, addDays } from '@/lib/datetime/resolve';
@@ -68,9 +69,11 @@ export async function POST(req: NextRequest) {
         );
 
       const dateDisplay = formatDateDisplay(editionDate);
-      const [enrich, briefOverrides] = await Promise.all([
+      const wantsMovies = events.some((e) => e.category === 'leisure' || e.category === 'social');
+      const [enrich, briefOverrides, movies] = await Promise.all([
         enrichEdition(events, dateDisplay),
         aiBriefs(events, dateDisplay, message),
+        wantsMovies ? liveMovies() : Promise.resolve(null),
       ]);
 
       const edition = composeEdition({
@@ -82,6 +85,7 @@ export async function POST(req: NextRequest) {
         leadBody: enrich.leadBody,
         calorieTarget: parseCalorieTarget(message),
         briefOverrides,
+        movies,
       });
 
       return ok({ reply: enrich.reply, edition, warnings: extraction.warnings, eventCount: events.length });

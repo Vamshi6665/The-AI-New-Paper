@@ -1,6 +1,7 @@
 import type { EventRecord } from '@/types/event';
 import type { DayPlan, EventBrief, ItemGroup } from '@/types/edition';
 import { formatClock } from '@/lib/datetime/resolve';
+import { pickMixed, pickMovies, type Movie } from './movies';
 
 /**
  * Detailed planning layer. Turns a bare event ("gym at 7") into something a
@@ -31,6 +32,8 @@ export function groupFor(e: EventRecord, hasCelebration: boolean): ItemGroup {
   // "pick up the cake / buy a gift" belongs with the celebration it serves
   if (hasCelebration && has(e, /\b(cake|gift|present|card|flowers?|balloons?|decorat\w*)\b/i)) return 'celebration';
   if (e.category === 'medical' || e.category === 'appointment') return 'appointment';
+  if (e.category === 'social') return 'social';
+  if (e.category === 'leisure') return 'leisure';
   if (e.category === 'meeting') return 'work';
   if (has(e, /\b(slides?|presentation|report|proposal|essay|assignment|deck|spreadsheet|code|deploy)\b/i))
     return 'work';
@@ -38,7 +41,7 @@ export function groupFor(e: EventRecord, hasCelebration: boolean): ItemGroup {
 }
 
 // ---------- workouts ----------
-type Plan = { kind: string; steps: string[]; burnPerMin: number; sets: number };
+type Plan = { kind: string; steps: string[]; burnPerMin: number; sets: number; focus?: string; rest?: string; after?: string };
 
 function workoutFor(e: EventRecord): Plan {
   const t = `${e.title} ${e.description ?? ''}`.toLowerCase();
@@ -49,20 +52,39 @@ function workoutFor(e: EventRecord): Plan {
       kind: 'Leg day',
       burnPerMin: 7,
       sets: 17,
+      focus: 'Quads · hamstrings · glutes · calves',
+      rest: '2 min on squats · 60 s accessories',
+      after: 'Protein + carbs within 45 min; light walk and stretch tonight.',
       steps: [warm, 'Back squat — 4 × 8', 'Romanian deadlift — 3 × 10', 'Walking lunges — 3 × 12 / leg', 'Leg press — 3 × 12', 'Calf raises — 4 × 15', cool],
     };
   if (/\b(chest|bench|push)\b/.test(t))
     return {
-      kind: 'Push day',
+      kind: 'Chest day',
       burnPerMin: 6.5,
-      sets: 16,
-      steps: [warm, 'Bench press — 4 × 8', 'Incline dumbbell press — 3 × 10', 'Cable fly — 3 × 12', 'Shoulder press — 3 × 10', 'Triceps pushdown — 3 × 12', cool],
+      sets: 20,
+      focus: 'Chest · shoulders · triceps',
+      rest: '90 s heavy · 60 s accessories',
+      after: 'Protein within 45 min (25–40 g) and a carb source to refuel.',
+      steps: [
+        'Warm-up — 8 min band pull-aparts, arm circles, 2 light sets',
+        'Flat bench press — 4 × 8, rest 90 s',
+        'Incline dumbbell press — 3 × 10',
+        'Cable fly — 3 × 12, slow squeeze',
+        'Dips (or push-ups) — 3 × 10',
+        'Shoulder press — 3 × 10',
+        'Triceps pushdown — 3 × 12',
+        'Finisher — push-up burnout, 1 set to failure',
+        cool,
+      ],
     };
   if (/\b(back|pull|deadlift)\b/.test(t))
     return {
-      kind: 'Pull day',
+      kind: 'Back day',
       burnPerMin: 6.5,
-      sets: 16,
+      sets: 19,
+      focus: 'Back · biceps · rear delts',
+      rest: '90 s heavy · 60 s accessories',
+      after: 'Protein within 45 min (25–40 g) and plenty of water.',
       steps: [warm, 'Deadlift — 3 × 5', 'Pull-ups — 4 × max', 'Barbell row — 4 × 10', 'Lat pulldown — 3 × 12', 'Face pulls — 3 × 15', cool],
     };
   if (/\b(arms?|biceps?|triceps?|shoulders?)\b/.test(t))
@@ -104,8 +126,20 @@ function workoutFor(e: EventRecord): Plan {
     kind: 'Full-body strength',
     burnPerMin: 6.5,
     sets: 17,
+    focus: 'Full body',
+    rest: '60–90 s between sets',
+    after: 'Protein within 45 min (25–40 g).',
     steps: [warm, 'Squat — 4 × 8', 'Push-ups or bench — 4 × 8', 'Row — 3 × 10', 'Overhead press — 3 × 10', 'Plank — 3 × 45 sec', cool],
   };
+}
+
+function movieIdeas(live: Movie[] | null | undefined, seed: string, moods: ('cosy' | 'family' | 'thrill' | 'laugh' | 'epic')[]): Movie[] {
+  if (live && live.length >= 3) {
+    const h = [...seed].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % live.length;
+    return Array.from({ length: 3 }, (_, i) => live[(h + i) % live.length]!);
+  }
+  const mixed = pickMixed(moods, seed);
+  return mixed.length >= 3 ? mixed : [...mixed, ...pickMovies(moods[0]!, seed, 3)].slice(0, 3);
 }
 
 // ---------- per-event briefs ----------
@@ -115,6 +149,8 @@ const DEFAULT_MIN: Record<string, number> = {
   medical: 45,
   appointment: 45,
   errand: 45,
+  social: 120,
+  leisure: 90,
   finance: 10,
   study: 90,
   task: 60,
@@ -144,7 +180,7 @@ const GROCERY_STARTER = [
   'Healthy snacks & water',
 ];
 
-export function buildBrief(e: EventRecord, group: ItemGroup, ctx: { celebrating: string | null }): EventBrief {
+export function buildBrief(e: EventRecord, group: ItemGroup, ctx: { celebrating: string | null; movies?: Movie[] | null; seed?: string; hasVisit?: boolean; hasMovie?: boolean }): EventBrief {
   const start = e.startTime ? toMin(e.startTime) : null;
   const dur = durationMin(e);
   const own = e.checklist.map((c) => c.title);
@@ -152,6 +188,9 @@ export function buildBrief(e: EventRecord, group: ItemGroup, ctx: { celebrating:
   let blurb = '';
   let steps: string[] = [];
   let checklist: string[] = [...own];
+  let suggestions: EventBrief['suggestions'];
+  let suggestionsLabel: string | undefined;
+  const seed = ctx.seed ?? e.dateLocal ?? 'today';
 
   const addLeave = (travel: number, early: number, label = 'Leave by') => {
     if (start !== null) metrics.push({ label, value: clock(start - travel - early) });
@@ -159,13 +198,15 @@ export function buildBrief(e: EventRecord, group: ItemGroup, ctx: { celebrating:
 
   if (group === 'fitness') {
     const w = workoutFor(e);
-    blurb = `${w.kind}. Train hard, stay clean on form, finish with a stretch.`;
+    blurb = `${w.kind}${w.focus ? ` — ${w.focus.toLowerCase()}` : ''}. Control the weight, keep form clean, finish with a stretch.`;
     steps = w.steps;
     metrics.push({ label: 'Duration', value: mins(dur) });
+    if (w.focus) metrics.push({ label: 'Focus', value: w.focus });
     metrics.push({ label: 'Est. burn', value: `${Math.round((dur * w.burnPerMin) / 10) * 10 - 50}–${Math.round((dur * w.burnPerMin) / 10) * 10 + 50} kcal` });
     if (w.sets) metrics.push({ label: 'Total sets', value: String(w.sets) });
+    if (w.rest) metrics.push({ label: 'Rest', value: w.rest });
     addLeave(15, 5);
-    if (!checklist.length) checklist = ['Water bottle (500 ml)', 'Towel & gym shoes', 'Headphones / workout playlist', 'Light pre-workout snack'];
+    if (!checklist.length) checklist = ['Water bottle (500 ml)', 'Towel & gym shoes', 'Headphones / playlist', 'Light pre-workout snack', w.after ?? 'Post-workout protein'];
   } else if (e.category === 'medical' || has(e, /\b(doctor|dentist|clinic|hospital|checkup|check-up|physio)\b/i)) {
     blurb = `Be early, be prepared, get your questions answered.${e.person ? ` Appointment with ${e.person}.` : ''}`;
     steps = [
@@ -213,9 +254,41 @@ export function buildBrief(e: EventRecord, group: ItemGroup, ctx: { celebrating:
     steps = ['Define "done" in one sentence', 'Focus block 1 — 45 min, phone away', 'Break — 10 min, walk and water', 'Focus block 2 — 45 min, then review'];
     metrics.push({ label: 'Plan', value: '2 × 45 min' });
     if (!checklist.length) checklist = ['Close messages & tabs', 'Outline the 3 key points', 'Final read-through & export'];
+  } else if (group === 'social') {
+    const visit = /\b(visit|place|house|home|sister|brother|parents|family|friend)\b/i.test(`${e.title} ${e.description ?? ''}`);
+    blurb = visit ? 'A warm, unhurried evening — good food, good company, no screens at the table.' : 'Good company deserves your full attention.';
+    steps = visit
+      ? [
+          'Text ahead to confirm the time and what to bring',
+          start !== null ? `Leave by ${clock(start - 30)} and sort your ride home` : 'Sort your ride home in advance',
+          'Bring something small — sweets, fruit or flowers',
+          'Dinner together, then a game, a walk or a film',
+          'Phone away; ask one real question about their week',
+        ]
+      : ['Confirm the place and time', 'Plan your travel time', 'Phone away once you arrive'];
+    if (start !== null) metrics.push({ label: visit ? 'Leave by' : 'Leave by', value: clock(start - (visit ? 30 : 25)) });
+    metrics.push({ label: 'Stay', value: mins(dur) });
+    if (!checklist.length) checklist = visit ? ['Gift or sweets', 'Phone charger', 'Ride home sorted', 'A game or film idea'] : ['Directions', 'Phone charged'];
+    if (visit && !ctx.hasMovie) {
+      suggestions = movieIdeas(ctx.movies, seed, ['family', 'cosy', 'family']);
+      suggestionsLabel = 'Movie night at theirs — pick one';
+    }
+  } else if (group === 'leisure') {
+    const movie = /\b(movie|film)\b/i.test(`${e.title} ${e.description ?? ''}`);
+    blurb = movie ? 'Phone down, lights low — one proper film.' : 'Recharge on purpose, not by accident.';
+    steps = movie
+      ? ['Choose by 8:30 — no scrolling for an hour', 'Snacks and water ready before it starts', 'Lights low, notifications off', 'Aim to finish before 11 PM']
+      : ['Pick one thing and commit', 'Silence notifications', 'Stop at a set time'];
+    metrics.push({ label: 'Length', value: mins(dur) });
+    if (start !== null) metrics.push({ label: 'Start', value: clock(start) });
+    if (!checklist.length) checklist = movie ? ['Snacks & drinks', 'Blanket and cosy spot', 'Phone on silent'] : [];
+    if (movie) {
+      suggestions = movieIdeas(ctx.movies, seed, ctx.hasVisit ? ['family', 'cosy', 'family'] : ['cosy', 'thrill', 'epic']);
+      suggestionsLabel = ctx.movies?.length ? 'Now playing — pick one' : 'Tonight’s picks';
+    }
   } else if (has(e, /\b(grocer\w*|supermarket|shopping)\b/i)) {
     blurb = 'Shop once, shop smart — a list means nothing is forgotten.';
-    steps = ['Check the pantry and fridge first', 'Group the list by aisle', 'Stick to the list; carry your own bags'];
+    steps = ['Check the pantry and fridge first', 'Group the list by aisle: produce, protein, dairy, pantry', 'Quieter store hours: before 11 AM or after 7 PM', 'Stick to the list; carry your own bags'];
     metrics.push({ label: 'Allow', value: mins(dur) });
     if (!checklist.length) {
       checklist = GROCERY_STARTER;
@@ -256,7 +329,7 @@ export function buildBrief(e: EventRecord, group: ItemGroup, ctx: { celebrating:
     metrics.push({ label: 'Allow', value: mins(dur) });
   }
 
-  return { blurb, steps, checklist: checklist.slice(0, 8), metrics: metrics.slice(0, 4) };
+  return { blurb, steps, checklist: checklist.slice(0, 8), metrics: metrics.slice(0, 5), suggestions, suggestionsLabel };
 }
 
 // ---------- day plan: rhythm, fuel, water ----------
@@ -269,7 +342,10 @@ export function parseCalorieTarget(text: string): number | null {
   return m.length ? Math.max(...m) : null;
 }
 
-export function buildDayPlan(events: EventRecord[], opts: { calorieTarget?: number | null } = {}): DayPlan {
+export function buildDayPlan(
+  events: EventRecord[],
+  opts: { calorieTarget?: number | null; lastEndMin?: number | null } = {}
+): DayPlan {
   const timed = events
     .filter((e) => e.timePrecision === 'exact' && e.startTime)
     .sort((a, b) => a.startTime!.localeCompare(b.startTime!));
@@ -284,24 +360,49 @@ export function buildDayPlan(events: EventRecord[], opts: { calorieTarget?: numb
     const lead = first.category === 'fitness' ? 60 : first.category === 'meeting' ? 100 : 80;
     wake = Math.min(7 * 60, Math.max(5 * 60, toMin(first.startTime!) - lead));
   }
-  const lastEnd = last ? toMin(last.endTime ?? last.startTime!) : 0;
-  const lights = lastEnd > 21 * 60 ? Math.min(lastEnd + 90, 24 * 60 + 30) : 22 * 60 + 30;
+  const lastEnd = Math.max(last ? toMin(last.endTime ?? last.startTime!) : 0, opts.lastEndMin ?? 0);
+  const lights = lastEnd > 21 * 60 ? Math.min(lastEnd + 45, 24 * 60 + 30) : 22 * 60 + 30;
 
   let calories: DayPlan['calories'] = null;
   const wantsFuel = trains || opts.calorieTarget || events.some((e) => e.category === 'meal');
   if (wantsFuel) {
     const target = opts.calorieTarget ?? (trains ? 2200 : 2000);
-    const split: [string, number, string][] = [
-      ['Breakfast', 0.25, 'Oats or eggs, fruit, coffee or tea'],
-      ['Lunch', 0.3, 'Lean protein, vegetables, rice or roti'],
-      ['Snack', 0.1, 'Greek yogurt, nuts or a banana'],
-      ['Dinner', 0.35, 'Protein, a big plate of vegetables, light carbs'],
-    ];
+    const w = workouts.find((x) => x.timePrecision === 'exact' && x.startTime);
+    const ws = w ? toMin(w.startTime!) : null;
+    const we = w && ws !== null ? ws + durationMin(w) : null;
+    const big = target >= 2800;
+
+    // meals anchored around the day: breakfast after waking, workout fuel around the session
+    type M = [string, number, string, number];
+    const meals: M[] = [];
+    const bf = Math.max(wake + 45, ws !== null && ws < 9 * 60 ? ws + (we! - ws) + 25 : 8 * 60);
+    if (trains && ws !== null && ws < 9 * 60) {
+      meals.push(['Pre-workout', 0.08, big ? 'Banana, toast and peanut butter' : 'Banana or a rice cake with honey', Math.max(wake + 10, ws - 45)]);
+      meals.push(['Breakfast', 0.22, big ? 'Eggs, oats, fruit and a protein shake' : 'Eggs or oats, fruit, coffee or tea', bf]);
+    } else {
+      meals.push(['Breakfast', 0.22, big ? 'Eggs, oats, fruit and a protein shake' : 'Eggs or oats, fruit, coffee or tea', Math.max(wake + 45, 8 * 60)]);
+    }
+    meals.push(['Lunch', 0.3, big ? 'Big bowl: lean protein, rice, vegetables, olive oil' : 'Lean protein, vegetables, rice or roti', 12 * 60 + 30]);
+    if (trains && ws !== null && ws >= 9 * 60) {
+      meals.push(['Pre-workout', 0.08, 'Banana or yogurt with honey', Math.max(15 * 60, ws - 60)]);
+      meals.push(['Post-workout', 0.1, 'Protein shake plus a carb (milk, fruit)', we! + 20]);
+    } else {
+      meals.push(['Snack', 0.1, big ? 'Greek yogurt, nuts, fruit and a shake' : 'Greek yogurt, nuts or a banana', 16 * 60]);
+    }
+    meals.push(['Dinner', 0.3, big ? 'Protein, plenty of vegetables, a solid carb' : 'Protein, a big plate of vegetables, light carbs', 19 * 60 + 30]);
+    const totalPct = meals.reduce((a, m) => a + m[1], 0);
+    meals.sort((a, b) => a[3] - b[3]);
+
     calories = {
       target,
       source: opts.calorieTarget ? 'you' : 'suggested',
-      protein: round10((target * 0.28) / 4),
-      meals: split.map(([name, pct, idea]) => ({ name, kcal: round10(target * pct), idea })),
+      protein: round10((target * (big ? 0.27 : 0.28)) / 4),
+      note: big
+        ? 'A high-energy day: spread it across meals so you are never stuffed or starving.'
+        : target < 1800
+          ? 'A lighter day: keep protein high and meals regular.'
+          : 'A steady day: regular meals, protein at each.',
+      meals: meals.map(([name, pct, idea, t]) => ({ name, kcal: round10((target * pct) / totalPct), idea, time: clock(t) })),
     };
   }
 

@@ -17,7 +17,7 @@ interface Msg {
 }
 
 const SUGGESTIONS = [
-  'Tomorrow: wake early, leg day at the gym at 7 with a 2200 calorie plan, project meeting at 10, doctor at 3, and I need to buy groceries.',
+  "Tomorrow I have chest day at the gym at 6 with a 3000 calorie plan, I need to go to the grocery store, then to my sister's place in the evening, and I want to watch a movie at night.",
   "It's Sarah's birthday tomorrow — call her at 8 PM, pick up a cake, finish my slides, and go for a run in the morning.",
   'Today: deep work till noon, lunch with Alex at 1, dentist at 4, then laundry and pay the electric bill.',
 ];

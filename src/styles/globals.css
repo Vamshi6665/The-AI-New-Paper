@@ -10,21 +10,25 @@
   --ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --num: 'Oswald', 'Arial Narrow', sans-serif;
 
-  --bg: #0d0e10;
-  --bg-1: #131518;
-  --bg-2: #1a1c20;
-  --bg-3: #23262b;
-  --line: rgba(255, 255, 255, 0.08);
-  --line-2: rgba(255, 255, 255, 0.16);
+  --bg: #e3e4e7;
+  --bg-1: #f3f3f5;
+  --bg-2: #ffffff;
+  --bg-3: #d8d9de;
+  --line: rgba(24, 26, 31, 0.1);
+  --line-2: rgba(24, 26, 31, 0.2);
 
-  --fg: #eceef1;
-  --fg-dim: #a3a9b2;
-  --fg-faint: #6a707a;
+  --fg: #1a1c20;
+  --fg-dim: #4f545d;
+  --fg-faint: #858a93;
 
-  --silver: #d9dde3;
-  --steel: #8a9bb0;
-  --steel-glow: rgba(138, 155, 176, 0.28);
-  --ok: #8fb3a0;
+  --red: #d8142f;
+  --red-h: #b60f27;
+  --red-glow: rgba(216, 20, 47, 0.28);
+  --charcoal: #2a2d33;
+  --silver: #2a2d33;
+  --steel: #d8142f;
+  --steel-glow: rgba(216, 20, 47, 0.3);
+  --ok: #3f9a6c;
 
   --s1: 8px;
   --s2: 16px;
@@ -54,8 +58,8 @@ body {
   overflow-x: hidden;
 }
 ::selection {
-  background: var(--steel);
-  color: #0d0e10;
+  background: var(--red);
+  color: #fff;
 }
 a {
   color: inherit;
@@ -83,8 +87,8 @@ textarea {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(900px 500px at 12% -8%, rgba(138, 155, 176, 0.1), transparent 60%),
-    radial-gradient(700px 500px at 100% 0%, rgba(255, 255, 255, 0.04), transparent 55%), var(--bg);
+    radial-gradient(900px 520px at 10% -10%, rgba(216, 20, 47, 0.09), transparent 60%),
+    radial-gradient(800px 560px at 100% 0%, rgba(255, 255, 255, 0.85), transparent 58%), var(--bg);
 }
 
 /* ---------------- topbar ---------------- */
@@ -96,7 +100,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   padding: 14px var(--s4);
-  background: rgba(13, 14, 16, 0.72);
+  background: rgba(227, 228, 231, 0.8);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--line);
 }
@@ -112,16 +116,16 @@ textarea {
   width: 20px;
 }
 .mk-bar {
-  height: 2px;
+  height: 3px;
   border-radius: 2px;
-  background: var(--silver);
+  background: var(--charcoal);
 }
 .mk-bar:nth-child(1) {
   width: 100%;
 }
 .mk-bar:nth-child(2) {
   width: 62%;
-  background: var(--steel);
+  background: var(--red);
 }
 .mk-bar:nth-child(3) {
   width: 82%;
@@ -192,7 +196,7 @@ textarea {
   padding: 6px 14px 6px 10px;
   border: 1px solid var(--line-2);
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.7);
 }
 .pulse {
   width: 7px;
@@ -220,7 +224,7 @@ textarea {
 }
 .hl-line:nth-child(2) .hl-text {
   font-style: italic;
-  color: var(--steel);
+  color: var(--red);
 }
 .hero-sub {
   font-size: 18px;
@@ -239,8 +243,8 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: var(--silver);
-  color: #0d0e10;
+  background: var(--red);
+  color: #fff;
   border: none;
   border-radius: 99px;
   padding: 15px 26px 15px 28px;
@@ -248,7 +252,7 @@ textarea {
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 10px 40px rgba(217, 221, 227, 0.12);
+  box-shadow: 0 10px 34px var(--red-glow);
   transition:
     transform 0.25s var(--ease),
     box-shadow 0.25s,
@@ -256,8 +260,8 @@ textarea {
 }
 .btn-primary:hover {
   transform: translateY(-2px);
-  background: #fff;
-  box-shadow: 0 14px 50px rgba(217, 221, 227, 0.2);
+  background: var(--red-h);
+  box-shadow: 0 14px 44px var(--red-glow);
 }
 .btn-arrow {
   display: inline-block;
@@ -299,7 +303,7 @@ textarea {
 .tel-fill {
   height: 100%;
   width: 36%;
-  background: linear-gradient(90deg, transparent, var(--steel), var(--silver));
+  background: linear-gradient(90deg, transparent, var(--red), var(--charcoal));
   animation: sweep 3.6s cubic-bezier(0.5, 0, 0.3, 1) infinite;
 }
 @keyframes sweep {
@@ -360,9 +364,10 @@ textarea {
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: var(--bg-3);
-  border: 1px solid var(--line-2);
-  color: var(--silver);
+  background: var(--charcoal);
+  border: 1px solid var(--charcoal);
+  color: #fff;
+  box-shadow: inset 0 -3px 0 var(--red);
   font-family: var(--serif);
   font-weight: 600;
   font-size: 12px;
@@ -386,14 +391,14 @@ textarea {
   white-space: pre-wrap;
 }
 .bubble.assistant {
-  background: var(--bg-1);
+  background: var(--bg-2);
   border: 1px solid var(--line);
   color: var(--fg);
   border-top-left-radius: 4px;
 }
 .bubble.user {
-  background: var(--silver);
-  color: #0d0e10;
+  background: var(--charcoal);
+  color: #fff;
   border-bottom-right-radius: 4px;
 }
 .warnings {
@@ -407,7 +412,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 16px;
   border-top-left-radius: 4px;
-  background: var(--bg-1);
+  background: var(--bg-2);
   min-width: 280px;
 }
 .bd-row {
@@ -419,7 +424,7 @@ textarea {
   width: 14px;
   height: 14px;
   border: 2px solid var(--line-2);
-  border-top-color: var(--silver);
+  border-top-color: var(--red);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -464,9 +469,9 @@ textarea {
     border-color: var(--line);
   }
   35% {
-    color: var(--silver);
-    border-color: var(--steel);
-    background: rgba(138, 155, 176, 0.12);
+    color: var(--red);
+    border-color: var(--red);
+    background: rgba(216, 20, 47, 0.08);
   }
 }
 
@@ -482,7 +487,7 @@ textarea {
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--fg-dim);
-  background: var(--bg-1);
+  background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px 16px;
@@ -494,8 +499,8 @@ textarea {
     color 0.2s;
 }
 .sugg:hover {
-  border-color: var(--steel);
-  background: var(--bg-2);
+  border-color: var(--red);
+  background: #fff;
   color: var(--fg);
   transform: translateY(-2px);
 }
@@ -504,12 +509,12 @@ textarea {
 .composer {
   position: sticky;
   bottom: var(--s2);
-  background: rgba(26, 28, 32, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(18px);
   border: 1px solid var(--line-2);
   border-radius: 20px;
   padding: 10px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 18px 50px rgba(30, 32, 38, 0.16);
   transition: border-color 0.25s;
 }
 .composer:focus-within,
@@ -543,8 +548,8 @@ textarea {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--bg-3);
-  color: var(--silver);
+  background: #fff;
+  color: var(--charcoal);
   border: 1px solid var(--line-2);
   cursor: pointer;
   transition:
@@ -553,21 +558,21 @@ textarea {
     border-color 0.2s;
 }
 .mic:hover:not(:disabled) {
-  background: #2d3036;
+  background: #f0f0f2;
   transform: scale(1.05);
 }
 .mic.on {
-  background: var(--silver);
-  color: #0d0e10;
-  border-color: var(--silver);
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
   animation: micPulse 1.6s ease-out infinite;
 }
 @keyframes micPulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(217, 221, 227, 0.45);
+    box-shadow: 0 0 0 0 rgba(216, 20, 47, 0.45);
   }
   100% {
-    box-shadow: 0 0 0 16px rgba(217, 221, 227, 0);
+    box-shadow: 0 0 0 16px rgba(216, 20, 47, 0);
   }
 }
 .send {
@@ -579,8 +584,8 @@ textarea {
   padding: 0 22px;
   border-radius: 99px;
   border: none;
-  background: var(--silver);
-  color: #0d0e10;
+  background: var(--red);
+  color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -590,7 +595,7 @@ textarea {
     opacity 0.2s;
 }
 .send:hover:not(:disabled) {
-  background: #fff;
+  background: var(--red-h);
   transform: translateY(-1px);
 }
 .send:disabled {
@@ -617,7 +622,7 @@ textarea {
   font-size: 10.5px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--steel);
+  color: var(--red);
 }
 .live-text {
   min-width: 0;
@@ -639,7 +644,7 @@ textarea {
   width: 3px;
   height: 100%;
   border-radius: 3px;
-  background: var(--silver);
+  background: var(--red);
   transform-origin: center;
   animation: wave 1s ease-in-out infinite;
 }
@@ -671,7 +676,7 @@ textarea {
   border-radius: 12px;
   font-size: 13px;
   color: var(--fg-dim);
-  background: var(--bg-1);
+  background: #fff;
 }
 
 /* ---------------- edition card (the sheet on screen) ---------------- */
@@ -679,7 +684,8 @@ textarea {
   margin-top: 14px;
   border: 1px solid var(--line-2);
   border-radius: 20px;
-  background: linear-gradient(180deg, #17191c, #101113);
+  background: linear-gradient(180deg, #f7f7f8, #e9eaed);
+  box-shadow: 0 20px 60px rgba(30, 32, 38, 0.12);
   overflow: hidden;
   animation: turnIn 0.7s var(--ease) both;
 }
@@ -696,7 +702,7 @@ textarea {
   font-family: var(--serif);
   font-size: 15px;
   font-weight: 600;
-  color: var(--silver);
+  color: var(--fg);
 }
 .ec-tools {
   display: flex;
@@ -705,7 +711,7 @@ textarea {
 }
 .ec-tools select,
 .ec-tools button {
-  background: var(--bg-3);
+  background: #fff;
   color: var(--fg);
   border: 1px solid var(--line-2);
   border-radius: 99px;
@@ -721,17 +727,17 @@ textarea {
   padding-right: 10px;
 }
 .ec-tools button:hover:not(:disabled) {
-  background: #2f3238;
+  background: #f0f0f2;
   transform: translateY(-1px);
 }
 .ec-tools button.solid {
-  background: var(--silver);
-  color: #0d0e10;
-  border-color: var(--silver);
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
   font-weight: 600;
 }
 .ec-tools button.solid:hover:not(:disabled) {
-  background: #fff;
+  background: var(--red-h);
 }
 .ec-tools button:disabled {
   opacity: 0.5;
@@ -742,12 +748,12 @@ textarea {
   font-size: 12.5px;
   color: var(--fg-dim);
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(216, 20, 47, 0.05);
 }
 .ec-paper {
   padding: 24px;
   background:
-    radial-gradient(600px 300px at 50% 0%, rgba(138, 155, 176, 0.1), transparent 70%), #0c0d0f;
+    radial-gradient(600px 300px at 50% 0%, rgba(255, 255, 255, 0.9), transparent 70%), #d4d5d9;
 }
 .paper-wrap {
   position: relative;
@@ -757,8 +763,8 @@ textarea {
   overflow: hidden;
   border-radius: 4px;
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.5),
-    0 30px 80px rgba(0, 0, 0, 0.55);
+    0 1px 3px rgba(30, 32, 38, 0.25),
+    0 24px 60px rgba(30, 32, 38, 0.25);
 }
 
 /* ---------------- responsive ---------------- */

@@ -62,3 +62,15 @@ describe('planning', () => {
     expect(plan.waterLiters).toBe(2.5);
   });
 });
+
+describe('your-day scenarios', () => {
+  const text =
+    "I need to go to my sister's place in the evening, I have a workout session of the chest day at 6, I need to go to the grocery store, I want to watch a movie at night, and I want 3000 calories";
+  it('splits into four events and keeps the calorie goal out of them', () => {
+    const ev = run(text);
+    expect(ev.map((e) => e.category)).toEqual(['social', 'fitness', 'errand', 'leisure']);
+    expect(ev.find((e) => e.category === 'errand')!.checklist).toEqual([]); // no list given -> planner adds a starter list
+    expect(ev.find((e) => e.category === 'social')!.partOfDay).toBe('evening');
+    expect(parseCalorieTarget(text)).toBe(3000);
+  });
+});

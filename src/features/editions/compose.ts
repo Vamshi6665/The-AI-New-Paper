@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { EventRecord } from '@/types/event';
 import type { AgendaRow, Edition, EditionItem, EventBrief, Glance, NewspaperSection, SectionItem } from '@/types/edition';
 import { buildBrief, buildDayPlan, groupFor } from './plan';
+import { suggestPlacements } from './schedule';
 import { CATEGORY_LABEL } from '@/types/event';
 import { formatClock, formatDateDisplay } from '@/lib/datetime/resolve';
 
@@ -85,6 +86,7 @@ export function composeEdition(input: {
   leadHeadline?: string;
   leadBody?: string;
   calorieTarget?: number | null;
+  movies?: { title: string; note: string }[] | null;
   /** optional richer briefs (e.g. AI-written) keyed by event id; merged over the deterministic ones */
   briefOverrides?: Record<string, Partial<EventBrief>>;
 }): Edition {
@@ -223,27 +225,44 @@ export function composeEdition(input: {
   // ---- fully detailed items (what the one-page paper renders) ----
   const celebrant = events.find((e) => e.category === 'birthday')?.person ?? null;
   const hasCelebration = events.some((e) => e.category === 'birthday');
+  const hasVisit = events.some((e) => e.category === 'social');
+  const hasMovie = events.some((e) => e.category === 'leisure' && /\b(movie|film)\b/i.test(`${e.title} ${e.description ?? ''}`));
+  const placed = new Map(suggestPlacements(events).map((p) => [p.eventId, p]));
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
   const items: EditionItem[] = events.map((e) => {
     const group = groupFor(e, hasCelebration);
-    const base = buildBrief(e, group, { celebrating: celebrant });
+    const p = placed.get(e.id);
+    // plan around the suggested slot too, so leave-by / prep times make sense
+    const planned: EventRecord = p ? { ...e, startTime: hhmm(p.start), endTime: hhmm(Math.min(p.end, 24 * 60 - 1)) } : e;
+    const base = buildBrief(planned, group, {
+      celebrating: celebrant,
+      movies: input.movies ?? null,
+      seed: input.editionDate,
+      hasVisit,
+      hasMovie,
+    });
     const o = input.briefOverrides?.[e.id];
     const brief: EventBrief = o
       ? {
+          ...base,
           blurb: o.blurb || base.blurb,
           steps: o.steps?.length ? o.steps : base.steps,
           checklist: o.checklist?.length ? o.checklist : base.checklist,
-          metrics: base.metrics.length ? base.metrics : (o.metrics ?? []),
         }
       : base;
+    const exact = e.timePrecision === 'exact' && !!e.startTime;
     return {
       eventId: e.id,
       title: e.title,
       category: e.category,
       group,
-      timeLabel: timeLabel(e),
-      startTime: e.startTime,
-      endTime: e.endTime,
-      exact: e.timePrecision === 'exact' && !!e.startTime,
+      timeLabel: exact ? timeLabel(e) : p ? formatClock(hhmm(p.start))! : timeLabel(e),
+      startTime: exact ? e.startTime : p ? hhmm(p.start) : e.startTime,
+      endTime: exact ? e.endTime : p ? hhmm(Math.min(p.end, 24 * 60 - 1)) : e.endTime,
+      exact,
+      suggested: !exact && !!p,
+      endLabel: exact ? (e.endTime ? formatClock(e.endTime) : null) : p ? formatClock(hhmm(Math.min(p.end, 24 * 60 - 1))) : null,
       location: e.location,
       person: e.person,
       priority: e.priority,
@@ -253,13 +272,20 @@ export function composeEdition(input: {
   });
   const POD = ['morning', 'afternoon', 'evening', 'night'];
   const podOf = new Map(events.map((e) => [e.id, e.partOfDay]));
-  const rank = (i: EditionItem) => (i.exact ? 0 : i.timeLabel === 'Anytime' ? 2 : 1);
+  const rank = (i: EditionItem) => (i.startTime ? 0 : i.timeLabel === 'Anytime' ? 2 : 1);
   items.sort((a, b) => {
     if (rank(a) !== rank(b)) return rank(a) - rank(b);
     if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
     return POD.indexOf(podOf.get(a.eventId) ?? '') - POD.indexOf(podOf.get(b.eventId) ?? '');
   });
-  const plan = buildDayPlan(events, { calorieTarget: input.calorieTarget });
+  const lastEndMin = Math.max(
+    0,
+    ...items.filter((i) => i.startTime).map((i) => {
+      const t = i.endTime ?? i.startTime!;
+      return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    })
+  );
+  const plan = buildDayPlan(events, { calorieTarget: input.calorieTarget, lastEndMin });
 
   const dateDisplay = formatDateDisplay(input.editionDate);
   const edition: Edition = {

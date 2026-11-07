@@ -55,9 +55,9 @@ function sanitize(ev: ExtractedEvent, ctx: ResolveContext, rawText: string): Ext
   let partOfDay = ev.partOfDay;
   if (start) {
     precision = 'exact';
-  } else if (partOfDay || detectPartOfDay(rawText)) {
+  } else if (partOfDay) {
+    // per-event only: never inherit a part of day that another item in the message mentioned
     precision = 'partofday';
-    partOfDay = partOfDay ?? detectPartOfDay(rawText);
   } else {
     precision = 'none';
   }

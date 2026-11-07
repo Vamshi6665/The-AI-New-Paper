@@ -47,9 +47,11 @@ export interface EventBrief {
   steps: string[]; // ordered plan lines; "Name — detail" renders as two columns
   checklist: string[]; // tick-off items (bring / buy / prepare)
   metrics: { label: string; value: string }[]; // short chips: Duration, Leave by, Burn…
+  suggestions?: { title: string; note: string }[]; // e.g. movie picks for the evening
+  suggestionsLabel?: string; // heading for the suggestions block
 }
 
-export type ItemGroup = 'fitness' | 'celebration' | 'appointment' | 'work' | 'task';
+export type ItemGroup = 'fitness' | 'celebration' | 'appointment' | 'work' | 'task' | 'social' | 'leisure';
 
 /** One normalized, fully-detailed entry per source event — what the paper renders. */
 export interface EditionItem {
@@ -61,6 +63,8 @@ export interface EditionItem {
   startTime: string | null;
   endTime: string | null;
   exact: boolean;
+  suggested: boolean; // time was chosen by the planner, not stated by the user
+  endLabel: string | null;
   location: string | null;
   person: string | null;
   priority: 'low' | 'normal' | 'high';
@@ -78,7 +82,8 @@ export interface DayPlan {
     target: number;
     source: 'you' | 'suggested';
     protein: number;
-    meals: { name: string; kcal: number; idea: string }[];
+    meals: { name: string; kcal: number; idea: string; time: string }[];
+    note: string;
   } | null;
   waterLiters: number;
   waterGlasses: number; // 250 ml each

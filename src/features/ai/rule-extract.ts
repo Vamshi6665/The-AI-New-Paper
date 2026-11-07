@@ -35,10 +35,16 @@ const RULES: Rule[] = [
     category: 'errand',
     keywords: /\bgroceries|grocery|buy |pick up|drop off|shopping|pharmacy|milk|eggs|bread/i,
   },
+  { category: 'leisure', keywords: /\bmovie|movies|film|netflix|series|binge|game night|watch (?:a|the|some|tv)\b|relax|unwind/i },
+  {
+    category: 'social',
+    keywords:
+      /\bsister|brother|cousin|aunt|uncle|grandma|grandpa|grandparents|parents|friend'?s?\b|'s (?:place|house|home)|\bover at\b|\bvisit|hang out|meet |family/i,
+  },
   { category: 'travel', keywords: /\bflight|train|drive to|airport|commute|travel|trip/i },
   { category: 'meal', keywords: /\blunch|dinner|breakfast|brunch|coffee with|eat/i },
   { category: 'study', keywords: /\bstudy|read|course|lecture|homework|revise|learn/i },
-  { category: 'social', keywords: /\bcall |visit|meet |hang out|family|friends/i },
+  { category: 'social', keywords: /\bcall |friends/i },
   { category: 'reminder', keywords: /\bremind|remember to|don't forget/i },
 ];
 
@@ -47,7 +53,7 @@ const CLAUSE_VERBS =
 
 // Built from plain strings on purpose: a template literal here gets mangled by the production minifier.
 const LIST_RE = new RegExp(
-  '\\b(buy|need|get|grab)\\b(.*?)(?=(?:,|\\band)\\s+(?:' + CLAUSE_VERBS + ')\\b|\\bthen\\b|;|\\.|$)',
+  '\\b(buy|get|grab|pick up|need(?!\\s+to\\b)|need to (?:buy|get|grab|pick up))\\b(.*?)(?=(?:,|\\band)\\s+(?:i\\s+|i\\s+also\\s+|also\\s+|then\\s+)?(?:' + CLAUSE_VERBS + '|need|want)\\b|\\bthen\\b|;|\\.|$)',
   'gi'
 );
 
@@ -66,9 +72,11 @@ function splitClauses(text: string): string[] {
   // next clause verb (so "buy groceries and finish X" still splits in two).
   t = t.replace(LIST_RE, (_m, verb: string, rest: string) => `${verb}${rest.replace(/,|\s+and\s+/gi, '⁞')}`);
   return t
-    .split(/,| and | then |;|\.|\balso\b/i)
+    .split(/,| and | then |;|\.|\balso\b|\s+(?=I (?:need|want|have|will|plan|should|must|am going)\b)/i)
     .map((c) => c.trim().replace(/⁞/g, ', '))
-    .filter((c) => c.length > 2 && /[a-z]/i.test(c));
+    .filter((c) => c.length > 2 && /[a-z]/i.test(c))
+    // a bare calorie goal ("I want 3000 calories") is a plan setting, not an event
+    .filter((c) => !/^(?:i\s+)?(?:want|need|aim for|target)?\s*(?:to (?:eat|hit|have)\s+)?[\d,]{3,5}\s*(?:k?cal|calories?)\b[^,]*$/i.test(c));
 }
 
 function extractTime(clause: string): { start: string | null; raw: string | null; assumed: boolean } {
@@ -120,6 +128,8 @@ function titleize(clause: string): string {
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,-]+|[\s,-]+$/g, '')
     .trim();
+  t = t.replace(/\s+(?:in the (?:morning|afternoon|evening)|at night|tonight|this (?:morning|afternoon|evening))\b/gi, '').trim();
+  if (/^(?:my|his|her|their)\s/i.test(t) && /'s (?:place|house|home)|sister|brother|parents|friend/i.test(t)) t = `Visit ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
   t = t.charAt(0).toUpperCase() + t.slice(1);
   return t.length > 2 ? t.slice(0, 80) : clause.slice(0, 80);
 }
@@ -143,7 +153,7 @@ function extractPerson(clause: string): string | null {
 function extractChecklist(clause: string, category: EventCategory): string[] {
   if (category !== 'errand' && category !== 'task') return [];
   // "milk, eggs, bread and bananas" after a buy/need verb
-  const m = clause.match(/\b(?:need to buy|need to get|have to buy|buy|need|get|pick up)\s+(.+)/i);
+  const m = clause.match(/\b(?:need to buy|need to get|have to buy|buy|need(?!\s+to\b)|get|pick up)\s+(.+)/i);
   if (!m) return [];
   return m[1]!
     .split(/,| and /i)
