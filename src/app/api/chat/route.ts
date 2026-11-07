@@ -81,8 +81,9 @@ export async function POST(req: NextRequest) {
         editionDate,
         masthead: enrich.masthead,
         quote: enrich.quote,
-        leadHeadline: enrich.leadHeadline,
-        leadBody: enrich.leadBody,
+        // generic template copy is replaced by the composer's data-driven lead; model copy is kept
+        leadHeadline: enrich.ai ? enrich.leadHeadline : undefined,
+        leadBody: enrich.ai ? enrich.leadBody : undefined,
         calorieTarget: parseCalorieTarget(message),
         briefOverrides,
         movies,

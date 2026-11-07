@@ -47,7 +47,7 @@ export const PAPER_CSS = `
 .p-lead p{font-size:1.08em;line-height:1.5;color:var(--ink2);font-family:'Newsreader',Georgia,serif}
 .p-quote{background:var(--red);color:#fff;border-radius:.8em;padding:.9em 1em;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .p-quote::before{content:"\\201C";position:absolute;right:.15em;top:-.28em;font:700 7em/1 'Newsreader',serif;color:#ffffff33}
-.p-quote q{quotes:none;font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:1.28em;line-height:1.28;position:relative}
+.p-quote q{quotes:none;font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:1.5em;line-height:1.25;position:relative}
 .p-quote cite{font-style:normal;margin-top:.7em;color:#d6efe3;display:block}
 
 /* day bar */
@@ -95,10 +95,9 @@ export const PAPER_CSS = `
 
 /* cards */
 .card{background:var(--card);border:1px solid var(--line);border-radius:.8em;padding:.7em .85em;margin-bottom:.65em;flex:0 0 auto}
-.card.grow{flex:1 1 auto}
 .card.dark{background:var(--dark);border-color:var(--dark);color:#efe8d6}
 .card-k{display:flex;justify-content:space-between;align-items:center;color:var(--steel);gap:.5em}
-.card-k .pill{background:var(--red);color:#fff;border-radius:99px;padding:.1em .7em;font-size:1em;letter-spacing:.06em;font-family:'Oswald',sans-serif;font-weight:500;text-transform:none}
+.card-k .pill{white-space:nowrap;flex:none;background:var(--red);color:#fff;border-radius:99px;padding:.1em .7em;font-size:1em;letter-spacing:.06em;font-family:'Oswald',sans-serif;font-weight:500;text-transform:none}
 .card.dark .card-k{color:var(--red2)}
 .p-title{font-weight:700;font-size:1.42em;line-height:1.1;margin:.22em 0 .12em}
 .blurb{font-size:.9em;color:var(--mute);line-height:1.35}
@@ -117,6 +116,16 @@ export const PAPER_CSS = `
 .ex span:first-child{flex:none;max-width:44%}
 .ex span:last-child{font-family:'Oswald',sans-serif;letter-spacing:.03em;color:var(--silver);text-align:right}
 .card:not(.dark) .ex div{border-bottom-color:var(--line)}
+.ex .rx{display:grid;grid-template-columns:minmax(0,1.05fr) auto minmax(0,2fr);column-gap:.7em;align-items:baseline;justify-content:normal}
+.ex .rx b{font-weight:600;color:var(--silver)}
+.ex .rx i{font-style:normal;font-family:'Oswald',sans-serif;letter-spacing:.04em;color:var(--red2);white-space:nowrap}
+.ex .rx span:last-child{text-align:left;font-family:'Inter',system-ui,sans-serif;letter-spacing:0;color:#e9e3d2;white-space:normal}
+.win{margin-top:.35em;font-size:.92em}
+.win div{display:grid;grid-template-columns:1fr auto;column-gap:.6em;padding:.3em 0;border-bottom:1px dashed var(--line)}
+.win div:last-child{border-bottom:0}
+.win b{font-family:'Oswald',sans-serif;font-weight:500;letter-spacing:.02em}
+.win i{font-style:normal;color:var(--red);font-weight:600;font-size:.9em}
+.win span{grid-column:1/-1;color:var(--mute);font-size:.88em}
 .card:not(.dark) .ex span:last-child{color:var(--ink)}
 .steps{margin-top:.45em;font-size:.88em;counter-reset:s}
 .steps li{position:relative;padding:.14em 0 .14em 1.5em;counter-increment:s;color:var(--ink2)}
@@ -150,7 +159,9 @@ export const PAPER_CSS = `
 .note{font-size:.72em;color:var(--faint);margin-top:.45em;line-height:1.3}
 
 /* footer */
-.p-notes{flex:1 1 auto;min-height:7em;display:flex;flex-direction:column;margin-top:.6em}
+.p-fill{flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;border:1px dashed var(--line);border-radius:.8em;padding:.5em .8em .4em;background:transparent}
+.p-fill .lines{flex:1 1 0;min-height:0;margin-top:.2em;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 1.55em,var(--line) 1.55em,var(--line) calc(1.55em + 1px))}
+.p-fill .wins{margin-top:.2em}
 .p-notes .lines{flex:1;min-height:3em;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 1.55em,var(--line) 1.55em,var(--line) calc(1.55em + 1px))}
 .ck.wins li{padding:.3em 0}
 .ck.wins u{display:block;flex:1;height:1.1em;border-bottom:1px solid var(--faint);text-decoration:none}

@@ -5,6 +5,7 @@ import { buildBrief, buildDayPlan, groupFor } from './plan';
 import { suggestPlacements } from './schedule';
 import { CATEGORY_LABEL } from '@/types/event';
 import { formatClock, formatDateDisplay } from '@/lib/datetime/resolve';
+import { openWindows, fmtLen, clockOf } from './windows';
 
 /**
  * Compose the newspaper document model from events (spec §11). The database /
@@ -259,10 +260,10 @@ export function composeEdition(input: {
       group,
       timeLabel: exact ? timeLabel(e) : p ? formatClock(hhmm(p.start))! : timeLabel(e),
       startTime: exact ? e.startTime : p ? hhmm(p.start) : e.startTime,
-      endTime: exact ? e.endTime : p ? hhmm(Math.min(p.end, 24 * 60 - 1)) : e.endTime,
+      endTime: exact ? (e.endTime ?? (p ? hhmm(Math.min(p.end, 24 * 60 - 1)) : null)) : p ? hhmm(Math.min(p.end, 24 * 60 - 1)) : e.endTime,
       exact,
       suggested: !exact && !!p,
-      endLabel: exact ? (e.endTime ? formatClock(e.endTime) : null) : p ? formatClock(hhmm(Math.min(p.end, 24 * 60 - 1))) : null,
+      endLabel: exact ? (e.endTime ? formatClock(e.endTime) : p ? formatClock(hhmm(Math.min(p.end, 24 * 60 - 1))) : null) : p ? formatClock(hhmm(Math.min(p.end, 24 * 60 - 1))) : null,
       location: e.location,
       person: e.person,
       priority: e.priority,
@@ -286,6 +287,12 @@ export function composeEdition(input: {
     })
   );
   const plan = buildDayPlan(events, { calorieTarget: input.calorieTarget, lastEndMin });
+  // the header must describe the page: first/last of ALL placed items, suggested ones included
+  const timedItems = items.filter((i) => i.startTime);
+  if (timedItems.length) {
+    plan.firstMove = timedItems[0]!.timeLabel;
+    plan.lastItem = timedItems[timedItems.length - 1]!.timeLabel;
+  }
 
   const dateDisplay = formatDateDisplay(input.editionDate);
   const edition: Edition = {
@@ -302,8 +309,8 @@ export function composeEdition(input: {
     masthead: input.masthead ?? 'The Daily Edition',
     tagline: 'Your life. Your headlines. Your tomorrow.',
     quote: input.quote ?? null,
-    leadHeadline: input.leadHeadline ?? leadHeadline(events, glance),
-    leadBody: input.leadBody ?? frontStory(events, glance),
+    leadHeadline: input.leadHeadline ?? headlineFrom(items, events),
+    leadBody: input.leadBody ?? storyFrom(items, plan),
     sections,
     items,
     plan,
@@ -341,14 +348,14 @@ function frontStory(events: EventRecord[], glance: Glance): string {
 
 function editorsNote(events: EventRecord[], glance: Glance): string {
   if (events.length === 0)
-    return 'No plans are on the books yet. Add what tomorrow holds and your edition will take shape.';
+    return 'No plans are on the books yet. Tell me what the day holds and your edition will take shape.';
   const parts: string[] = [];
   if (glance.appointments)
     parts.push(`${glance.appointments} commitment${glance.appointments === 1 ? '' : 's'} to keep`);
   if (events.some((e) => e.category === 'fitness')) parts.push('time set aside for fitness');
   if (events.some((e) => e.category === 'birthday')) parts.push('a celebration to honor');
   const tail = parts.length ? parts.join(', ') : 'a manageable set of tasks';
-  return `Tomorrow brings ${tail}. Your edition lays out the day in order — keep it close and work it top to bottom.`;
+  return `The day holds ${tail}. Work it top to bottom, keep water close, and protect your sleep.`;
 }
 
 /**
@@ -357,4 +364,35 @@ function editorsNote(events: EventRecord[], glance: Glance): string {
  */
 export function verifyCoverage(edition: Edition): { ok: boolean; missing: string[] } {
   return { ok: edition.missingEventIds.length === 0, missing: edition.missingEventIds };
+}
+
+
+// ---- data-driven front page (replaces template copy) ----
+const shortTime = (label: string) => label.replace(':00', '').replace(' ', '\u00a0');
+const lc = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+function shortTitle(i: EditionItem): string {
+  if (/\b(movie|film)\b/i.test(i.title)) return 'movie night';
+  return lc(i.title.replace(/^(?:my|the)\s+/i, '').replace(/\s+(?:session|workout)$/i, ' workout').replace(/\s+at the gym$/i, ''));
+}
+
+function headlineFrom(items: EditionItem[], events: EventRecord[]): string {
+  if (events.length === 0) return 'A Clear Day Ahead';
+  const timed = items.filter((i) => i.startTime);
+  if (timed.length === 0) return `${events.length} ${events.length === 1 ? 'Item' : 'Items'} on Your List Today`;
+  const first = timed[0]!;
+  const last = timed[timed.length - 1]!;
+  if (timed.length === 1) return `${cap(shortTitle(first))} at ${shortTime(first.timeLabel)}`;
+  return `${cap(shortTitle(first))} at ${shortTime(first.timeLabel)}, ${shortTitle(last)} by ${shortTime(last.timeLabel)}`;
+}
+
+function storyFrom(items: EditionItem[], plan: Edition['plan']): string {
+  if (items.length === 0) return 'The day lies open and unwritten. Tell me what is coming up and I will set it in type.';
+  const seq = items.map((i) => `${lc(i.title)} (${i.suggested ? '~' : ''}${shortTime(i.timeLabel)})`);
+  const list = seq.length > 1 ? `${seq.slice(0, -1).join(', ')} and ${seq[seq.length - 1]}` : seq[0];
+  const parts = [`${items.length} ${items.length === 1 ? 'thing' : 'things'} today: ${list}.`];
+  if (plan.calories) parts.push(`Fuel: ${plan.calories.target.toLocaleString('en-US')} kcal across ${plan.calories.meals.length} meals, ${plan.waterLiters} L of water.`);
+  const best = openWindows(items, 90).sort((a, b) => b.len - a.len)[0];
+  if (best) parts.push(`Longest open stretch: ${clockOf(best.from)} to ${clockOf(best.to)} (${fmtLen(best.len)}).`);
+  return parts.join(' ');
 }

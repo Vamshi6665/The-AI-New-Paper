@@ -16,7 +16,7 @@ const EnrichSchema = z.object({
   leadBody: z.string().min(1).max(900),
   reply: z.string().min(1).max(400),
 });
-export type Enrichment = z.infer<typeof EnrichSchema>;
+export type Enrichment = z.infer<typeof EnrichSchema> & { ai?: boolean };
 
 function summarizeForPrompt(events: EventRecord[]): string {
   if (events.length === 0) return '(no events — an open day)';
@@ -53,7 +53,7 @@ export async function enrichEdition(events: EventRecord[], dateDisplay: string):
         maxTokens: 700,
         temperature: 0.7,
       });
-      return EnrichSchema.parse(JSON.parse(extractJson(raw)));
+      return { ...EnrichSchema.parse(JSON.parse(extractJson(raw))), ai: true };
     } catch {
       // fall through to deterministic
     }

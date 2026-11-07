@@ -20,7 +20,7 @@ describe('suggested times and plans', () => {
     expect(by('Grocery').suggested).toBe(true);
     expect(by('Grocery').timeLabel).toBe('4:30 PM');
     expect(by('sister').timeLabel).toBe('6:00 PM');
-    expect(by('movie').startTime).toBe('20:30'); // movie night, inside the evening at the sister's
+    expect(by('movie').startTime).toBe('19:30'); // movie night, inside the evening at the sister's
     expect(by('chest').suggested).toBe(false);
   });
 
@@ -53,5 +53,33 @@ describe('movie night with no time given', () => {
     });
     expect(e.items[0]!.timeLabel).toBe('6:00 PM');
     expect(e.items[0]!.endLabel).toBe('9:00 PM');
+  });
+});
+
+describe('the page tells the truth about the day', () => {
+  const events = [
+    ev({ title: 'Chest day workout', category: 'fitness', startTime: '06:00', timePrecision: 'exact' }),
+    ev({ title: 'Grocery store', category: 'errand' }),
+    ev({ title: "Visit my sister's place", category: 'social', partOfDay: 'evening', timePrecision: 'partofday' }),
+    ev({ title: 'Watch a movie', category: 'leisure', partOfDay: 'night', timePrecision: 'partofday' }),
+  ];
+  const e = composeEdition({ events, editionDate: '2026-11-07', calorieTarget: 3000 });
+  const mv = e.items.find((i) => i.title.includes('movie'))!;
+  const visit = e.items.find((i) => i.title.includes('sister'))!;
+
+  it('header: first/last item cover suggested slots; lights-out is sane', () => {
+    expect(e.plan.firstMove).toBe('6:00 AM');
+    expect(e.plan.lastItem).toBe('7:30 PM');
+    expect(e.plan.lightsOut).toMatch(/PM$/);
+    expect(e.plan.lightsOut).not.toMatch(/^12/);
+  });
+  it('the movie is watched during the visit, which lasts until the film ends', () => {
+    expect(mv.endTime).toBe('21:30');
+    expect(visit.endTime).toBe('21:30');
+  });
+  it('lead is built from the day, not a template', () => {
+    expect(e.leadHeadline.replace(/\u00a0/g, ' ')).toBe('Chest day workout at 6 AM, movie night by 7:30 PM');
+    expect(e.leadBody).toMatch(/4 things today/);
+    expect(e.leadBody).toMatch(/3,000 kcal/);
   });
 });

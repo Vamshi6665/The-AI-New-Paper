@@ -66,7 +66,7 @@ function workoutFor(e: EventRecord): Plan {
       rest: '90 s heavy · 60–75 s supersets',
       after: 'Protein within 45 min (25–40 g) and a carb source to refuel.',
       steps: [
-        'Warm-up · 0–8 min — band pull-aparts, arm circles, 2 light bench sets',
+        'Warm-up · 8 min — band pull-aparts, arm circles, 2 light bench sets',
         'Cycle 1 · 16 min — Strength: Flat bench press 4 × 8, rest 90 s',
         'Cycle 2 · 14 min — Superset × 3: Incline dumbbell press 10 + Cable fly 12, rest 75 s after each pair',
         'Cycle 3 · 12 min — Superset × 3: Dips 10 + Shoulder press 10, rest 60 s after each pair',
@@ -358,7 +358,9 @@ export function buildDayPlan(
     wake = Math.min(7 * 60, Math.max(5 * 60, toMin(first.startTime!) - lead));
   }
   const lastEnd = Math.max(last ? toMin(last.endTime ?? last.startTime!) : 0, opts.lastEndMin ?? 0);
-  const lights = lastEnd > 21 * 60 ? Math.min(lastEnd + 45, 24 * 60 + 30) : 22 * 60 + 30;
+  // lights out: leave ~7.5 h before wake, never before 9:30 PM or after 10:30 PM by default; later only if the day runs late
+  const base = Math.min(22 * 60 + 30, Math.max(21 * 60 + 30, wake + 24 * 60 - 450));
+  const lights = Math.min(Math.max(base, lastEnd + 30), 23 * 60 + 45);
 
   let calories: DayPlan['calories'] = null;
   const wantsFuel = trains || opts.calorieTarget || events.some((e) => e.category === 'meal');

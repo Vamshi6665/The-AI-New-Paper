@@ -173,7 +173,19 @@ export function ruleExtract(text: string, ctx: ResolveContext): ExtractionResult
 
   const events: ExtractedEvent[] = clauses.map((clause) => {
     const category = categorize(clause);
-    const { start, raw, assumed } = extractTime(clause);
+    let { start, raw, assumed } = extractTime(clause);
+    // "deep work till noon": the end is stated, so work back a default 3 h block
+    let untilEnd: string | null = null;
+    const um = clause.match(/\b(?:till|until|til)\s+(noon|midnight|\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
+    if (um) {
+      untilEnd = /noon/i.test(um[1]!) ? '12:00' : /midnight/i.test(um[1]!) ? '23:59' : normalizeTime(um[1]);
+      if (untilEnd && !start) {
+        const [eh, em] = untilEnd.split(':').map(Number);
+        const b = Math.max(0, eh! * 60 + em! - 180);
+        start = `${String(Math.floor(b / 60)).padStart(2, '0')}:${String(b % 60).padStart(2, '0')}`;
+        raw = um[0];
+      }
+    }
     const part = detectPartOfDay(clause);
     const person = extractPerson(clause);
     const checklist = extractChecklist(clause, category);
@@ -191,8 +203,8 @@ export function ruleExtract(text: string, ctx: ResolveContext): ExtractionResult
     }
 
     // derive endTime from start + duration when both are known
-    let endTime: string | null = null;
-    if (start && duration) {
+    let endTime: string | null = untilEnd;
+    if (start && duration && !untilEnd) {
       const [h, m] = start.split(':').map(Number);
       const total = h! * 60 + m! + duration;
       endTime = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;

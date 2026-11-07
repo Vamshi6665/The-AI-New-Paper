@@ -74,3 +74,11 @@ describe('your-day scenarios', () => {
     expect(parseCalorieTarget(text)).toBe(3000);
   });
 });
+
+describe('until-time', () => {
+  it('"deep work till noon" is a morning block ending at 12:00', () => {
+    const [e] = run('Deep work till noon');
+    expect(e!.endTime).toBe('12:00');
+    expect(e!.startTime).toBe('09:00');
+  });
+});

@@ -109,11 +109,11 @@ export interface Placement {
  */
 export function suggestPlacements(events: EventRecord[]): Placement[] {
   // `host` slots (a visit at someone's place) may be shared with a movie: you watch it there
-  type B = Slot & { host?: boolean };
+  type B = Slot & { host?: boolean; id?: string };
   const isHost = (e: EventRecord) => e.category === 'social' && /\b(visit|place|house|home|sister|brother|parents|family|friend)\b/i.test(`${e.title} ${e.description ?? ''}`);
   const busy: B[] = events
     .filter((e) => e.timePrecision === 'exact' && e.startTime)
-    .map((e) => ({ start: toMin(e.startTime!), end: toMin(e.startTime!) + defaultDuration(e), host: isHost(e) }));
+    .map((e) => ({ start: toMin(e.startTime!), end: toMin(e.startTime!) + defaultDuration(e), host: isHost(e), id: e.id }));
 
   const rank = (e: EventRecord) =>
     (e.priority === 'high' ? 0 : 1) * 10 +
@@ -126,11 +126,14 @@ export function suggestPlacements(events: EventRecord[]): Placement[] {
 
   const out: Placement[] = [];
   for (const e of todo) {
-    const dur = defaultDuration(e);
     const pref = preferred(e);
-    // movie alongside a visit: start after the hello and dinner, not on arrival
+    // a movie alongside a visit is watched there: after the hello and dinner, ~2 h
     const host = e.category === 'leisure' ? busy.find((b) => b.host) : undefined;
-    if (host && pref.part !== 'night') pref.at = Math.max(pref.at, host.start + 90);
+    if (host) {
+      pref.part = 'evening';
+      pref.at = Math.max(19 * 60 + 30, host.start + 90);
+    }
+    const dur = host ? 120 : defaultDuration(e);
     const [wa, wz] = WINDOW[pref.part];
     const movie = e.category === 'leisure';
     const free = (s: number) =>
@@ -146,8 +149,15 @@ export function suggestPlacements(events: EventRecord[]): Placement[] {
     for (let s = fa; s + dur <= fz + 60 && found === null; s += 15) if (free(s)) found = s;
     for (let s = 8 * 60; s + dur <= 22 * 60 + 30 && found === null; s += 15) if (free(s)) found = s;
     if (found !== null) {
-      busy.push({ start: found, end: found + dur, host: isHost(e) });
+      busy.push({ start: found, end: found + dur, host: isHost(e), id: e.id });
       out.push({ eventId: e.id, start: found, end: found + dur });
+      if (host && found + dur > host.end) {
+        // the visit lasts until the film ends
+        host.end = found + dur;
+        const hp = out.find((o) => o.eventId === host.id);
+        if (hp) hp.end = host.end;
+        else if (host.id) out.push({ eventId: host.id, start: host.start, end: host.end }); // exact-timed visit stretches too
+      }
     }
   }
   return out;
