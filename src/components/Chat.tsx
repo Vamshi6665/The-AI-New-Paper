@@ -5,7 +5,10 @@ import { createPortal } from 'react-dom';
 import { NewspaperView } from './NewspaperView';
 import { useSpeech } from '@/lib/use-speech';
 import { PAPER_PX, type PaperSize } from '@/features/paper/sizes';
+import { editionToIcs } from '@/lib/ics';
 import type { Edition } from '@/types/edition';
+
+const STORE = 'daily-edition:thread:v1';
 
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago';
 
@@ -31,12 +34,34 @@ export function Chat() {
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [restored, setRestored] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   const speech = useSpeech(
     useCallback((t: string) => setInput((cur) => (cur ? `${cur.trimEnd()} ${t}` : t)), [])
   );
+
+  // restore the last session (per-browser convenience; safe if storage is unavailable)
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (Array.isArray(saved) && saved.length > 1) setMsgs(saved);
+    } catch {}
+    setRestored(true);
+  }, []);
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      if (msgs.length > 1) localStorage.setItem(STORE, JSON.stringify(msgs.slice(-6)));
+      else localStorage.removeItem(STORE);
+    } catch {}
+  }, [msgs, restored]);
+
+  function newDay() {
+    setMsgs((m) => m.slice(0, 1));
+    setInput('');
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,6 +158,14 @@ export function Chat() {
         )}
         <div ref={endRef} />
       </div>
+
+      {msgs.length > 1 && !busy && (
+        <div className="newday no-print">
+          <button type="button" onClick={newDay} data-testid="new-day">
+            ↺ New day
+          </button>
+        </div>
+      )}
 
       {showSuggestions && (
         <div className="suggestions no-print">
@@ -236,6 +269,17 @@ function EditionCard({ edition }: { edition: Edition }) {
     };
   }, [printing]);
 
+  function downloadIcs() {
+    const url = URL.createObjectURL(new Blob([editionToIcs(edition)], { type: 'text/calendar' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `daily-edition-${edition.editionDate}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
   async function downloadPdf() {
     setBusy(true);
     setErr(null);
@@ -273,6 +317,9 @@ function EditionCard({ edition }: { edition: Edition }) {
             <option value="letter">Letter</option>
             <option value="a4">A4</option>
           </select>
+          <button onClick={downloadIcs} type="button" data-testid="ics-btn" title="Add the timed items to your calendar">
+            Calendar
+          </button>
           <button onClick={() => setPrinting(true)} type="button" data-testid="print-btn">
             Print
           </button>

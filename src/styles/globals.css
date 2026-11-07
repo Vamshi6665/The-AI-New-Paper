@@ -853,3 +853,17 @@ textarea {
   .ec-tools { width: 100%; }
   .ec-tools select, .ec-tools button { flex: 1 1 auto; }
 }
+.newday { display: flex; justify-content: center; margin: 0 0 var(--s2); }
+.newday button {
+  font: 600 12px var(--disp, inherit);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.newday button:hover { color: var(--red); border-color: var(--red); }
